@@ -5,11 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 import 'package:skeletonizer/skeletonizer.dart' as sk;
 
 import 'package:pbn/core/constants/app_colors.dart';
-import 'package:pbn/core/providers/auth_provider.dart';
+import 'package:pbn/core/providers/riverpod_providers.dart';
 import 'package:pbn/core/services/community_service.dart';
 import 'package:pbn/core/services/push_notification_service.dart';
 import 'package:pbn/core/widgets/cached_avatar.dart';
@@ -999,7 +998,7 @@ class _PostCardState extends State<_PostCard> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.read<AuthProvider>();
+    final auth = context.read(authRiverpodProvider);
     final canDelete = auth.user?.id == widget.post.author.id ||
         auth.user?.role == 'SUPER_ADMIN' ||
         auth.user?.role == 'CHAPTER_ADMIN';
@@ -1168,7 +1167,7 @@ class _PostCardState extends State<_PostCard> {
                     onTap: _showComments,
                   ),
                   if (hasBusinessDetails &&
-                      context.read<AuthProvider>().user?.id ==
+                      context.read(authRiverpodProvider).user?.id ==
                           widget.post.author.id)
                     _actionButton(
                       icon: TablerIcons.adjustments,
@@ -2240,7 +2239,7 @@ class _CommentSheetState extends State<_CommentSheet> {
     final text = _commentController.text.trim();
     if (text.isEmpty || _submitting) return;
 
-    final auth = context.read<AuthProvider>();
+    final auth = context.read(authRiverpodProvider);
     if (auth.user == null) return;
 
     final tempId =
@@ -2425,7 +2424,7 @@ class _CommentSheetState extends State<_CommentSheet> {
   }
 
   Widget _buildCommentItem(PostComment comment) {
-    final auth = context.read<AuthProvider>();
+    final auth = context.read(authRiverpodProvider);
     final canDelete = auth.user?.id == comment.author.id ||
         auth.user?.role == 'SUPER_ADMIN';
 

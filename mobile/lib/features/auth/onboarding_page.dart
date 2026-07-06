@@ -205,7 +205,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                               child: ElevatedButton(
                                 onPressed: () {
                                   PrefsService.markFirstRunDone();
-                                  Navigator.pushReplacementNamed(context, '/apply');
+                                  Navigator.pushNamed(context, '/apply');
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
@@ -226,7 +226,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   TextButton(
                     onPressed: () {
                       PrefsService.markFirstRunDone();
-                      Navigator.pushReplacementNamed(context, '/login');
+                      Navigator.pushNamed(context, '/login');
                     },
                     child: RichText(
                       text: TextSpan(

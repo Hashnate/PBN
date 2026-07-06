@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -19,13 +21,22 @@ class PaymentWebViewPage extends StatefulWidget {
 }
 
 class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
-  late final WebViewController _controller;
+  WebViewController? _controller;
   bool _isLoading = true;
   double _progress = 0.0;
+  bool _isWebViewSupported = true;
 
   @override
   void initState() {
     super.initState();
+    
+    // webview_flutter does not support Windows/macOS/Linux out of the box without extra packages
+    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
+      _isWebViewSupported = false;
+      _isLoading = false;
+      return;
+    }
+
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(AppColors.primary)
@@ -108,8 +119,42 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
       ),
       body: Stack(
         children: [
-          WebViewWidget(controller: _controller),
-          if (_isLoading)
+          if (_isWebViewSupported && _controller != null)
+            WebViewWidget(controller: _controller!),
+          
+          if (!_isWebViewSupported)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(TablerIcons.device_mobile, size: 64, color: AppColors.textSecondary),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Payments via WebView are only supported on Android and iOS devices.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.dmSans(
+                        color: AppColors.text,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context, null),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      ),
+                      child: const Text('Go Back'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          if (_isLoading && _isWebViewSupported)
             Container(
               color: AppColors.background.withAlpha(230),
               child: Center(
@@ -133,7 +178,7 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
                 ),
               ),
             ),
-          if (_progress < 1.0 && !_isLoading)
+          if (_progress < 1.0 && !_isLoading && _isWebViewSupported)
             Positioned(
               top: 0,
               left: 0,

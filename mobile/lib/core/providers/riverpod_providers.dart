@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pbn/core/providers/auth_provider.dart';
 import 'package:pbn/core/providers/club_provider.dart';
@@ -22,3 +23,9 @@ final memberRiverpodProvider = ChangeNotifierProvider<MemberProvider>((ref) {
 final notificationRiverpodProvider = ChangeNotifierProvider<NotificationProvider>((ref) {
   return NotificationProvider();
 });
+
+extension RiverpodContext on BuildContext {
+  T read<T>(ProviderListenable<T> provider) {
+    return ProviderScope.containerOf(this, listen: false).read(provider);
+  }
+}

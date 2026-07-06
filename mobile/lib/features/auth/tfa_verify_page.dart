@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
-import 'package:provider/provider.dart';
 import 'package:pbn/core/constants/app_colors.dart';
-import 'package:pbn/core/providers/auth_provider.dart';
+import 'package:pbn/core/providers/riverpod_providers.dart';
 import 'package:pbn/core/widgets/custom_button.dart';
 import 'package:pbn/core/widgets/pbn_logo.dart';
 
@@ -61,7 +61,7 @@ class _TfaVerifyPageState extends State<TfaVerifyPage> {
       return;
     }
 
-    final auth = context.read<AuthProvider>();
+    final auth = context.read(authRiverpodProvider);
     final success = await auth.verify2FA(otp);
 
     if (success && mounted) {
@@ -77,7 +77,7 @@ class _TfaVerifyPageState extends State<TfaVerifyPage> {
   }
 
   Future<void> _handleResend() async {
-    final auth = context.read<AuthProvider>();
+    final auth = context.read(authRiverpodProvider);
     final success = await auth.resend2FA();
     if (success && mounted) {
       _showSuccess('A new verification code has been sent.');
@@ -101,9 +101,11 @@ class _TfaVerifyPageState extends State<TfaVerifyPage> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
+    return Consumer(
+      builder: (context, ref, _) {
+        final auth = ref.watch(authRiverpodProvider);
 
-    return Scaffold(
+        return Scaffold(
       backgroundColor: AppColors.background,
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
@@ -194,6 +196,8 @@ class _TfaVerifyPageState extends State<TfaVerifyPage> {
           ),
         ),
       ),
+    );
+      },
     );
   }
 

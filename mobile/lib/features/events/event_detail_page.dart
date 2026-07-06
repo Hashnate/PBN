@@ -5,12 +5,11 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:pbn/core/constants/api_config.dart';
 import 'package:pbn/core/constants/app_colors.dart';
-import 'package:pbn/core/providers/auth_provider.dart';
+import 'package:pbn/core/providers/riverpod_providers.dart';
 import 'package:pbn/core/services/event_service.dart';
 import 'package:pbn/models/event.dart';
 import 'package:pbn/features/payments/payment_service.dart';
@@ -110,8 +109,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
     final endTime = _currentEvent.endAt != null
         ? DateTime.parse(_currentEvent.endAt!).toLocal()
         : null;
-    final authProvider =
-        Provider.of<AuthProvider>(context, listen: false);
+    final authProvider = context.read(authRiverpodProvider);
     final userId = authProvider.user?.id ?? '';
     final rsvpStatus = _currentEvent.getRsvpStatus(userId);
 

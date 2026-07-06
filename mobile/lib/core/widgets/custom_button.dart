@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pbn/core/constants/app_colors.dart';
+import 'package:pbn/core/widgets/pbn_loading_indicator.dart';
 
 class CustomButton extends StatefulWidget {
   final String text;
@@ -110,13 +111,18 @@ class _CustomButtonState extends State<CustomButton> {
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                   child: Center(
                     child: widget.isLoading
-                        ? SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.4,
-                              color: widget.textColor,
-                            ),
+                        ? PbnLoadingIndicator(
+                            size: 22,
+                            baseColor: _isGold
+                                ? AppColors.primary.withValues(alpha: 0.1)
+                                : (_isPrimary
+                                    ? AppColors.accent.withValues(alpha: 0.1)
+                                    : widget.textColor.withValues(alpha: 0.1)),
+                            gradientColors: _isGold
+                                ? AppColors.primaryGradient
+                                : (_isPrimary
+                                    ? AppColors.goldGradient
+                                    : [widget.textColor.withValues(alpha: 0.2), widget.textColor]),
                           )
                         : Row(
                             mainAxisAlignment: MainAxisAlignment.center,

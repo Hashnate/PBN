@@ -3,12 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:skeletonizer/skeletonizer.dart' as sk;
 
 import 'package:pbn/core/constants/app_colors.dart';
 import 'package:pbn/core/constants/districts.dart';
-import 'package:pbn/core/providers/auth_provider.dart';
+import 'package:pbn/core/providers/riverpod_providers.dart';
 import 'package:pbn/core/services/chapter_service.dart';
 import 'package:pbn/core/widgets/pbn_app_bar_actions.dart';
 import 'package:pbn/core/widgets/pbn_bottom_sheet.dart';
@@ -81,8 +81,10 @@ class _ChaptersPageState extends State<ChaptersPage> {
   // ──────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    final user = auth.user;
+    return Consumer(
+      builder: (context, ref, _) {
+        final auth = ref.watch(authRiverpodProvider);
+        final user = auth.user;
     final home = _homeChapter(user?.chapterId);
     final filtered = _applyFilters(_chapters);
     // Exclude home chapter from explore list so it isn't shown twice.
@@ -115,6 +117,8 @@ class _ChaptersPageState extends State<ChaptersPage> {
           ),
         ),
       ),
+    );
+      },
     );
   }
 
@@ -1139,7 +1143,7 @@ class _ChaptersPageState extends State<ChaptersPage> {
   // CHAPTER DETAILS — bottom sheet (unique view, not a member list)
   // ──────────────────────────────────────────────────────────
   void _showChapterDetails(Chapter c) {
-    final auth = context.read<AuthProvider>();
+    final auth = context.read(authRiverpodProvider);
     final user = auth.user;
     final isMyChapter = user?.chapterId == c.id;
     // Members can only belong to one chapter, so the join CTA only makes

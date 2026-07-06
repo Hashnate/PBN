@@ -18,6 +18,10 @@ class _AnimatedPbnLogoState extends State<AnimatedPbnLogo> with SingleTickerProv
   late Animation<Offset> _pSlide;
   late Animation<Offset> _nSlide;
   
+  // Handshake component
+  late Animation<double> _handshakeScale;
+  late Animation<double> _handshakeOpacity;
+
   // Middle component B
   late Animation<double> _bScale;
   late Animation<double> _bGlow;
@@ -28,34 +32,55 @@ class _AnimatedPbnLogoState extends State<AnimatedPbnLogo> with SingleTickerProv
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 2200), // Slightly longer for the extra sequence step
     );
 
-    // 1. P and N Fade in (0.0 to 0.4)
+    // 1. P and N Fade in (0.0 to 0.35)
     _pOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.4, curve: Curves.easeIn)),
+      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.35, curve: Curves.easeIn)),
     );
     _nOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.4, curve: Curves.easeIn)),
+      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.35, curve: Curves.easeIn)),
     );
 
-    // 2. B Scales and Glows in the middle (0.4 to 0.8)
+    // 2. Handshake Scales and Fades in the middle (0.15 to 0.70)
+    _handshakeScale = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: const Interval(0.15, 0.40, curve: Curves.easeOutBack)),
+    );
+    _handshakeOpacity = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.0, end: 1.0),
+        weight: 40, // Fade in
+      ),
+      TweenSequenceItem(
+        tween: ConstantTween<double>(1.0),
+        weight: 20, // Hold
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 0.0),
+        weight: 40, // Fade out
+      ),
+    ]).animate(
+      CurvedAnimation(parent: _controller, curve: const Interval(0.15, 0.70, curve: Curves.easeInOut)),
+    );
+
+    // 3. B Scales and Glows in the middle (0.50 to 0.80)
     _bScale = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.4, 0.8, curve: Curves.elasticOut)),
+      CurvedAnimation(parent: _controller, curve: const Interval(0.50, 0.80, curve: Curves.elasticOut)),
     );
     _bOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.4, 0.6, curve: Curves.easeIn)),
+      CurvedAnimation(parent: _controller, curve: const Interval(0.50, 0.70, curve: Curves.easeIn)),
     );
     _bGlow = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.5, 0.9, curve: Curves.easeInOut)),
+      CurvedAnimation(parent: _controller, curve: const Interval(0.65, 0.95, curve: Curves.easeInOut)),
     );
 
-    // 3. P and N slide together to close the gap (0.7 to 1.0)
-    _pSlide = Tween<Offset>(begin: const Offset(-0.3, 0), end: Offset.zero).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.7, 1.0, curve: Curves.easeInOutBack)),
+    // 4. P and N slide together to close the gap (0.75 to 1.0)
+    _pSlide = Tween<Offset>(begin: const Offset(-0.35, 0), end: Offset.zero).animate(
+      CurvedAnimation(parent: _controller, curve: const Interval(0.75, 1.0, curve: Curves.easeInOutBack)),
     );
-    _nSlide = Tween<Offset>(begin: const Offset(0.3, 0), end: Offset.zero).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.7, 1.0, curve: Curves.easeInOutBack)),
+    _nSlide = Tween<Offset>(begin: const Offset(0.35, 0), end: Offset.zero).animate(
+      CurvedAnimation(parent: _controller, curve: const Interval(0.75, 1.0, curve: Curves.easeInOutBack)),
     );
 
     _controller.forward();
@@ -81,21 +106,9 @@ class _AnimatedPbnLogoState extends State<AnimatedPbnLogo> with SingleTickerProv
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        return Container(
+        return SizedBox(
           width: widget.size,
           height: widget.size,
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(widget.size * 0.15),
-            boxShadow: [
-              // Subtle glow for the B
-              BoxShadow(
-                color: AppColors.accent.withValues(alpha: 0.3 * _bGlow.value),
-                blurRadius: 30 * _bGlow.value,
-                spreadRadius: 2 * _bGlow.value,
-              ),
-            ],
-          ),
           child: Center(
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -114,15 +127,51 @@ class _AnimatedPbnLogoState extends State<AnimatedPbnLogo> with SingleTickerProv
                 SizedBox(
                   width: fontSize * 0.7, // Width of B
                   child: Center(
-                    child: Transform.scale(
-                      scale: _bScale.value,
-                      child: Opacity(
-                        opacity: _bOpacity.value,
-                        child: Text(
-                          'B', 
-                          style: letterStyle.copyWith(color: AppColors.accent)
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // B Text
+                        Transform.scale(
+                          scale: _bScale.value,
+                          child: Opacity(
+                            opacity: _bOpacity.value,
+                            child: Text(
+                              'B', 
+                              style: letterStyle.copyWith(
+                                color: AppColors.accent,
+                                shadows: [
+                                  Shadow(
+                                    color: AppColors.accent.withValues(alpha: 0.6 * _bGlow.value),
+                                    blurRadius: 20 * _bGlow.value,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+
+                        // Handshake Icon
+                        Transform.translate(
+                          offset: const Offset(-4, 2), // Horizontal shift of -4px to center it perfectly between P and N, and vertical shift of 2px for baseline alignment
+                          child: Transform.scale(
+                            scale: _handshakeScale.value,
+                            child: Opacity(
+                              opacity: _handshakeOpacity.value,
+                              child: Icon(
+                                Icons.handshake,
+                                size: fontSize * 0.85,
+                                color: AppColors.accent,
+                                shadows: [
+                                  Shadow(
+                                    color: AppColors.accent.withValues(alpha: 0.4 * _handshakeOpacity.value),
+                                    blurRadius: 15,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

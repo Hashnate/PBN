@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
-import 'package:provider/provider.dart';
 import 'package:pbn/core/constants/app_colors.dart';
-import 'package:pbn/core/providers/auth_provider.dart';
+import 'package:pbn/core/providers/riverpod_providers.dart';
 import 'package:pbn/core/services/auth_service.dart';
 import 'package:pbn/core/widgets/custom_button.dart';
 
@@ -55,7 +54,7 @@ class _ForceChangePasswordPageState extends State<ForceChangePasswordPage> {
       if (success && mounted) {
         TextInput.finishAutofillContext();
         // Refresh profile to clear the must_change_password flag in provider
-        await context.read<AuthProvider>().tryAutoLogin();
+        await context.read(authRiverpodProvider).tryAutoLogin();
 
         if (mounted) {
           // Navigate to dashboard
@@ -184,7 +183,7 @@ class _ForceChangePasswordPageState extends State<ForceChangePasswordPage> {
                 const SizedBox(height: 24),
                 Center(
                   child: TextButton(
-                    onPressed: () => context.read<AuthProvider>().logout(),
+                    onPressed: () => context.read(authRiverpodProvider).logout(),
                     child: Text(
                       'LOGOUT',
                       style: TextStyle(

@@ -5,14 +5,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:skeletonizer/skeletonizer.dart' as sk;
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pbn/core/constants/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pbn/core/constants/api_config.dart';
-import 'package:pbn/core/providers/auth_provider.dart';
-import 'package:pbn/core/providers/notification_provider.dart';
+import 'package:pbn/core/providers/riverpod_providers.dart';
 import 'package:pbn/core/services/dashboard_service.dart';
 import 'package:pbn/core/services/event_service.dart';
 import 'package:pbn/core/services/home_content_service.dart';
@@ -112,7 +111,7 @@ class _DashboardPageState extends State<DashboardPage> {
       _error = null;
     });
     try {
-      final auth = context.read<AuthProvider>();
+      final auth = context.read(authRiverpodProvider);
       final results = await Future.wait([
         _dashboardService.getDashboard(),
         auth.refreshProfile(),
@@ -144,7 +143,7 @@ class _DashboardPageState extends State<DashboardPage> {
         _loadHomeSlides();
         _loadRoi(_roiPeriod);
         if (mounted) {
-          final notifProvider = context.read<NotificationProvider>();
+          final notifProvider = context.read(notificationRiverpodProvider);
           notifProvider.startListening();
           notifProvider.fetchUnreadCount();
         }
@@ -173,7 +172,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _loadLeaderboard() async {
     try {
-      final auth = context.read<AuthProvider>();
+      final auth = context.read(authRiverpodProvider);
       final entries = await _dashboardService.getLeaderboard(
         chapterId: auth.user?.chapterId,
         period: 'this_month',
@@ -248,7 +247,7 @@ class _DashboardPageState extends State<DashboardPage> {
     if (!needsVirtual && !needsPhysical) return;
 
     try {
-      final auth = context.read<AuthProvider>();
+      final auth = context.read(authRiverpodProvider);
       final events = await _eventService.listEvents(chapterId: auth.user?.chapterId);
       final now = DateTime.now();
 
@@ -312,25 +311,29 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    final isProspect = auth.user?.role.toUpperCase() == 'PROSPECT';
+    return Consumer(
+      builder: (context, ref, _) {
+        final auth = ref.watch(authRiverpodProvider);
+        final isProspect = auth.user?.role.toUpperCase() == 'PROSPECT';
 
-    final pages = isProspect
-        ? [_buildProspectDashboard(), const ProfilePage()]
-        : [
-            _buildDashboardBody(),
-            const MembersPage(),
-            const MarketplacePage(),
-            const MatchmakingDashboardPage(),
-            const ProfilePage(),
-          ];
+        final pages = isProspect
+            ? [_buildProspectDashboard(ref), const ProfilePage()]
+            : [
+                _buildDashboardBody(ref),
+                const MembersPage(),
+                const MarketplacePage(),
+                const MatchmakingDashboardPage(),
+                const ProfilePage(),
+              ];
 
-    if (_currentIndex >= pages.length) _currentIndex = 0;
+        if (_currentIndex >= pages.length) _currentIndex = 0;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: IndexedStack(index: _currentIndex, children: pages),
-      bottomNavigationBar: _buildBottomNav(isProspect),
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          body: IndexedStack(index: _currentIndex, children: pages),
+          bottomNavigationBar: _buildBottomNav(isProspect),
+        );
+      },
     );
   }
 
@@ -354,8 +357,8 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  Widget _buildSliverAppBar(bool isProspect) {
-    final auth = context.watch<AuthProvider>();
+  Widget _buildSliverAppBar(bool isProspect, WidgetRef ref) {
+    final auth = ref.watch(authRiverpodProvider);
     final user = auth.user;
     final firstName = user?.fullName.split(' ').first ?? 'Member';
     final level = user?.verificationLevel ?? 'none';
@@ -529,7 +532,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildDashboardBody() {
+  Widget _buildDashboardBody(WidgetRef ref) {
     if (_error != null) return _buildErrorState();
 
     final sections = <Widget>[
@@ -684,7 +687,7 @@ class _DashboardPageState extends State<DashboardPage> {
           color: AppColors.primary,
           child: CustomScrollView(
             slivers: [
-              _buildSliverAppBar(false),
+              _buildSliverAppBar(false, ref),
               SliverPadding(
                 padding: const EdgeInsets.only(left: 20, right: 20, top: 4, bottom: 20),
                 sliver: SliverList.list(
@@ -1890,7 +1893,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildProspectDashboard() {
+  Widget _buildProspectDashboard(WidgetRef ref) {
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
         if (notification is ScrollUpdateNotification) {
@@ -1905,7 +1908,7 @@ class _DashboardPageState extends State<DashboardPage> {
       },
       child: CustomScrollView(
         slivers: [
-          _buildSliverAppBar(true),
+          _buildSliverAppBar(true, ref),
         SliverPadding(
           padding: const EdgeInsets.only(left: 32, right: 32, top: 12, bottom: 32),
           sliver: SliverList.list(

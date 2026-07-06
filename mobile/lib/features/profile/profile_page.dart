@@ -5,13 +5,11 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:skeletonizer/skeletonizer.dart' as sk;
 
 import 'package:pbn/core/constants/app_colors.dart';
-import 'package:pbn/core/providers/auth_provider.dart';
-import 'package:pbn/core/providers/member_provider.dart';
-import 'package:pbn/core/providers/notification_provider.dart';
+import 'package:pbn/core/providers/riverpod_providers.dart';
 import 'package:pbn/core/services/api_client.dart';
 import 'package:pbn/core/services/chapter_service.dart';
 import 'package:pbn/core/widgets/cached_avatar.dart';
@@ -92,7 +90,7 @@ class _ProfilePageState extends State<ProfilePage> {
       );
 
       if (!mounted) return;
-      await context.read<AuthProvider>().tryAutoLogin();
+      await context.read(authRiverpodProvider).tryAutoLogin();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile photo updated successfully!')));
     } catch (e) {
@@ -174,7 +172,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     if (email.isNotEmpty) payload['email'] = email;
                     await ApiClient().put('/auth/me', data: payload);
                     if (context.mounted) {
-                      await context.read<AuthProvider>().tryAutoLogin();
+                      await context.read(authRiverpodProvider).tryAutoLogin();
                       if (!context.mounted) return;
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated successfully!')));
@@ -255,9 +253,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
     if (shouldLogout != true || !mounted) return;
 
-    final auth = context.read<AuthProvider>();
-    context.read<MemberProvider>().clearCache();
-    context.read<NotificationProvider>().stopListening();
+    final auth = context.read(authRiverpodProvider);
+    context.read(memberRiverpodProvider).clearCache();
+    context.read(notificationRiverpodProvider).stopListening();
     await auth.logout();
     if (mounted) Navigator.pushNamedAndRemoveUntil(context, '/login', (r) => false);
   }
@@ -320,9 +318,9 @@ class _ProfilePageState extends State<ProfilePage> {
       await ApiClient().dio.delete('/auth/me');
       if (!mounted) return;
       
-      final auth = context.read<AuthProvider>();
-      context.read<MemberProvider>().clearCache();
-      context.read<NotificationProvider>().stopListening();
+      final auth = context.read(authRiverpodProvider);
+      context.read(memberRiverpodProvider).clearCache();
+      context.read(notificationRiverpodProvider).stopListening();
       await auth.logout();
       if (mounted) Navigator.pushNamedAndRemoveUntil(context, '/login', (r) => false);
     } catch (e) {
@@ -338,8 +336,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    final user = auth.user;
+    return Consumer(
+      builder: (context, ref, _) {
+        final auth = ref.watch(authRiverpodProvider);
+        final user = auth.user;
 
     final sections = <Widget>[
       _buildHeroCard(user),
@@ -357,7 +357,7 @@ class _ProfilePageState extends State<ProfilePage> {
       ],
       const SizedBox(height: 24),
       _sectionHeader('Account'),
-      _buildGroupedAccountCard(),
+      _buildGroupedAccountCard(ref),
       const SizedBox(height: 24),
       _buildSignOutCard(),
       const SizedBox(height: 16),
@@ -406,6 +406,8 @@ class _ProfilePageState extends State<ProfilePage> {
           ],
         ),
       ),
+    );
+      },
     );
   }
 
@@ -1216,8 +1218,8 @@ class _ProfilePageState extends State<ProfilePage> {
   // ──────────────────────────────────────────────────────────
   // 6) GROUPED ACCOUNT CARD (iOS-style settings list)
   // ──────────────────────────────────────────────────────────
-  Widget _buildGroupedAccountCard() {
-    final auth = context.watch<AuthProvider>();
+  Widget _buildGroupedAccountCard(WidgetRef ref) {
+    final auth = ref.watch(authRiverpodProvider);
     final user = auth.user;
 
     return Container(
@@ -1446,7 +1448,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _toggleTwoFactor(bool newValue) async {
-    final auth = context.read<AuthProvider>();
+    final auth = context.read(authRiverpodProvider);
     final user = auth.user;
     if (user == null) return;
 

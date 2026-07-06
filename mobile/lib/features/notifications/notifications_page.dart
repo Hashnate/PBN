@@ -4,11 +4,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 import 'package:skeletonizer/skeletonizer.dart' as sk;
 
 import 'package:pbn/core/constants/app_colors.dart';
-import 'package:pbn/core/providers/notification_provider.dart';
+import 'package:pbn/core/providers/riverpod_providers.dart';
 import 'package:pbn/core/services/notification_service.dart';
 import 'package:pbn/core/widgets/pbn_app_bar_actions.dart';
 import 'package:pbn/models/notification_item.dart';
@@ -67,7 +66,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
             .toList();
       });
       if (mounted) {
-        context.read<NotificationProvider>().fetchUnreadCount();
+        context.read(notificationRiverpodProvider).fetchUnreadCount();
       }
     } catch (_) {}
   }
@@ -81,7 +80,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
             _notifications.map((n) => _withRead(n, true)).toList();
       });
       if (mounted) {
-        context.read<NotificationProvider>().fetchUnreadCount();
+        context.read(notificationRiverpodProvider).fetchUnreadCount();
       }
     } catch (_) {}
   }
@@ -91,7 +90,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       await _service.deleteNotification(id);
       setState(() => _notifications.removeWhere((n) => n.id == id));
       if (mounted) {
-        context.read<NotificationProvider>().fetchUnreadCount();
+        context.read(notificationRiverpodProvider).fetchUnreadCount();
       }
     } catch (_) {}
   }

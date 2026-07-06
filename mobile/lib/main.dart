@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide ChangeNotifierProvider;
 import 'package:pbn/core/providers/riverpod_providers.dart';
 import 'package:pbn/core/theme/app_theme.dart';
@@ -25,6 +24,7 @@ import 'package:pbn/features/auth/forgot_password_page.dart';
 import 'package:pbn/features/auth/tfa_verify_page.dart';
 import 'package:pbn/features/notifications/notification_settings_page.dart';
 import 'package:pbn/features/clubs/clubs_page.dart';
+import 'package:pbn/features/members/members_page.dart';
 import 'package:pbn/core/services/push_notification_service.dart';
 import 'package:pbn/core/services/prefs_service.dart';
 
@@ -47,20 +47,9 @@ Future<void> main() async {
     debugPrint('PrefsService initialization failed: $e');
   }
 
-  final container = ProviderContainer();
-
   runApp(
-    UncontrolledProviderScope(
-      container: container,
-      child: MultiProvider(
-        providers: [
-          ChangeNotifierProvider.value(value: container.read(authRiverpodProvider)),
-          ChangeNotifierProvider.value(value: container.read(notificationRiverpodProvider)),
-          ChangeNotifierProvider.value(value: container.read(memberRiverpodProvider)),
-          ChangeNotifierProvider.value(value: container.read(clubRiverpodProvider)),
-        ],
-        child: const PBNApp(),
-      ),
+    const ProviderScope(
+      child: PBNApp(),
     ),
   );
 }
@@ -98,6 +87,7 @@ class PBNApp extends StatelessWidget {
         '/notification-settings': (context) => const AuthGuard(child: NotificationSettingsPage()),
         '/forgot-password': (context) => const ForgotPasswordPage(),
         '/clubs': (context) => const AuthGuard(child: ClubsPage()),
+        '/members': (context) => const AuthGuard(child: MembersPage()),
         '/verify-2fa': (context) => const TfaVerifyPage(),
       },
     );
@@ -110,29 +100,33 @@ class AuthGuard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    
-    if (auth.status == AuthStatus.unknown) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushReplacementNamed(context, '/splash');
-      });
-      return const Scaffold(backgroundColor: AppColors.background, body: Center(child: CircularProgressIndicator(color: AppColors.accent)));
-    }
-    
-    if (auth.status == AuthStatus.unauthenticated) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushReplacementNamed(context, '/onboarding');
-      });
-      return const Scaffold(backgroundColor: AppColors.background);
-    }
+    return Consumer(
+      builder: (context, ref, _) {
+        final auth = ref.watch(authRiverpodProvider);
+        
+        if (auth.status == AuthStatus.unknown) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Navigator.pushReplacementNamed(context, '/splash');
+          });
+          return const Scaffold(backgroundColor: AppColors.background, body: Center(child: CircularProgressIndicator(color: AppColors.accent)));
+        }
+        
+        if (auth.status == AuthStatus.unauthenticated) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Navigator.pushReplacementNamed(context, '/onboarding');
+          });
+          return const Scaffold(backgroundColor: AppColors.background);
+        }
 
-    if (auth.user?.mustChangePassword == true) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushReplacementNamed(context, '/force-change-password');
-      });
-      return const Scaffold(backgroundColor: AppColors.background);
-    }
+        if (auth.user?.mustChangePassword == true) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Navigator.pushReplacementNamed(context, '/force-change-password');
+          });
+          return const Scaffold(backgroundColor: AppColors.background);
+        }
 
-    return child;
+        return child;
+      },
+    );
   }
 }

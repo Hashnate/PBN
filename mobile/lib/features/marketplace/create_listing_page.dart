@@ -5,11 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:provider/provider.dart';
 
 import 'package:pbn/core/constants/api_config.dart';
 import 'package:pbn/core/constants/app_colors.dart';
-import 'package:pbn/core/providers/auth_provider.dart';
+import 'package:pbn/core/widgets/pbn_loading_indicator.dart';
+import 'package:pbn/core/providers/riverpod_providers.dart';
 import 'package:pbn/core/services/application_service.dart';
 import 'package:pbn/core/services/marketplace_service.dart';
 import 'package:pbn/models/chapter.dart';
@@ -53,7 +53,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
   @override
   void initState() {
     super.initState();
-    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final auth = context.read(authRiverpodProvider);
     final user = auth.user;
 
     _titleController = TextEditingController(text: widget.listing?.title);
@@ -755,11 +755,10 @@ class _CreateListingPageState extends State<CreateListingPage> {
             ),
             child: Center(
               child: _submitting
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2.5),
+                  ? const PbnLoadingIndicator(
+                      size: 22,
+                      baseColor: Colors.white12,
+                      gradientColors: [Colors.white38, Colors.white],
                     )
                   : Row(
                       mainAxisSize: MainAxisSize.min,

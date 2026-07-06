@@ -3,12 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:skeletonizer/skeletonizer.dart' as sk;
 
 import 'package:pbn/core/constants/api_config.dart';
 import 'package:pbn/core/constants/app_colors.dart';
-import 'package:pbn/core/providers/auth_provider.dart';
+import 'package:pbn/core/providers/riverpod_providers.dart';
 import 'package:pbn/core/services/dashboard_service.dart';
 import 'package:pbn/core/widgets/pbn_app_bar_actions.dart';
 
@@ -43,7 +43,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
       setState(() => _loading = true);
     }
     try {
-      final auth = context.read<AuthProvider>();
+      final auth = context.read(authRiverpodProvider);
       final newEntries = await _service.getLeaderboard(
         chapterId: auth.user?.chapterId,
         period: _period,
@@ -64,8 +64,10 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
   // ──────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    final myUserId = auth.user?.id;
+    return Consumer(
+      builder: (context, ref, _) {
+        final auth = ref.watch(authRiverpodProvider);
+        final myUserId = auth.user?.id;
 
     final top1 = _entries.isNotEmpty ? _entries[0] : null;
     final top2 = _entries.length >= 2 ? _entries[1] : null;
@@ -143,6 +145,8 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
           ),
         ),
       ),
+    );
+      },
     );
   }
 

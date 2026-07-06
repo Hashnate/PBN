@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
-import 'package:provider/provider.dart';
 import 'package:pbn/core/constants/app_colors.dart';
-import 'package:pbn/core/providers/auth_provider.dart';
+import 'package:pbn/core/providers/riverpod_providers.dart';
 import 'package:pbn/core/widgets/custom_button.dart';
 import 'package:pbn/core/widgets/pbn_logo.dart';
 
@@ -28,7 +28,7 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    final auth = context.read<AuthProvider>();
+    final auth = context.read(authRiverpodProvider);
     final success = await auth.login(identifier, password);
 
     if (auth.requires2FA && mounted) {
@@ -57,12 +57,14 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      resizeToAvoidBottomInset: true,
-      body: Stack(
-        clipBehavior: Clip.none,
+    return Consumer(
+      builder: (context, ref, _) {
+        final auth = ref.watch(authRiverpodProvider);
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          resizeToAvoidBottomInset: true,
+          body: Stack(
+            clipBehavior: Clip.none,
         children: [
           // ── DECORATIVE SOFT ACCENTS ──────────────────────────
           Positioned(
@@ -230,6 +232,8 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ],
       ),
+    );
+      },
     );
   }
 

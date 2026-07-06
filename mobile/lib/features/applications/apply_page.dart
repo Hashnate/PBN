@@ -6,6 +6,7 @@ import 'package:pbn/core/constants/districts.dart';
 import 'package:pbn/core/services/application_service.dart';
 import 'package:pbn/core/services/chapter_service.dart';
 import 'package:pbn/core/widgets/custom_button.dart';
+import 'package:pbn/core/widgets/pbn_loading_indicator.dart';
 import 'package:pbn/models/chapter.dart';
 
 class ApplyPage extends StatefulWidget {
@@ -181,7 +182,7 @@ class _ApplyPageState extends State<ApplyPage> {
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.primary, letterSpacing: -0.5)),
       ),
       body: _loadingInitial 
-        ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+        ? const Center(child: PbnLoadingIndicator())
         : Column(
             children: [
               _buildProgressIndicator(),

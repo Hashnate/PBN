@@ -3,10 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:skeletonizer/skeletonizer.dart' as sk;
 
 import 'package:pbn/core/constants/app_colors.dart';
+import 'package:pbn/core/providers/riverpod_providers.dart';
 import 'package:pbn/core/providers/club_provider.dart';
 import 'package:pbn/core/widgets/pbn_app_bar_actions.dart';
 import 'package:pbn/models/horizontal_club.dart';
@@ -30,7 +31,7 @@ class _ClubsPageState extends State<ClubsPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ClubProvider>().fetchClubs();
+      context.read(clubRiverpodProvider).fetchClubs();
     });
   }
 
@@ -42,8 +43,10 @@ class _ClubsPageState extends State<ClubsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<ClubProvider>();
-    final clubs = provider.clubs;
+    return Consumer(
+      builder: (context, ref, _) {
+        final provider = ref.watch(clubRiverpodProvider);
+        final clubs = provider.clubs;
     final loading = provider.loading && clubs.isEmpty;
     final hasError = !loading && provider.error != null && clubs.isEmpty;
 
@@ -128,6 +131,8 @@ class _ClubsPageState extends State<ClubsPage> {
           ),
         ),
       ),
+    );
+      },
     );
   }
 

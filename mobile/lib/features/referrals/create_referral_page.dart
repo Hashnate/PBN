@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
+import 'package:pbn/core/providers/riverpod_providers.dart';
 
 import 'package:pbn/core/constants/app_colors.dart';
-import 'package:pbn/core/providers/member_provider.dart';
 import 'package:pbn/core/widgets/pbn_bottom_sheet.dart';
 import 'package:pbn/core/widgets/cached_avatar.dart';
+import 'package:pbn/core/widgets/pbn_loading_indicator.dart';
 import 'package:pbn/core/services/auth_service.dart';
 import 'package:pbn/core/services/referral_service.dart';
 import 'package:pbn/models/member.dart';
@@ -54,7 +54,7 @@ class _CreateReferralPageState extends State<CreateReferralPage> {
 
   Future<void> _loadInitialData() async {
     try {
-      final memberProvider = Provider.of<MemberProvider>(context, listen: false);
+      final memberProvider = context.read(memberRiverpodProvider);
       _currentUser = await _authService.getProfile();
       if (widget.initialMember != null) {
         _selectedMember = widget.initialMember;
@@ -162,7 +162,7 @@ class _CreateReferralPageState extends State<CreateReferralPage> {
       ),
       body: _loadingMembers
           ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
+              child: PbnLoadingIndicator(),
             )
           : SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
@@ -368,7 +368,13 @@ class _CreateReferralPageState extends State<CreateReferralPage> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
         child: Row(
           children: [
-            _iconContainer(TablerIcons.user, AppColors.accentBlue),
+            _selectedMember != null
+                ? CachedAvatar(
+                    imageUrl: _selectedMember!.profilePhoto,
+                    initials: _selectedMember!.initials,
+                    size: 40,
+                  )
+                : _iconContainer(TablerIcons.user, AppColors.accentBlue),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -587,13 +593,10 @@ class _CreateReferralPageState extends State<CreateReferralPage> {
         ),
         child: Center(
           child: _loading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
+              ? const PbnLoadingIndicator(
+                  size: 20,
+                  baseColor: Colors.white12,
+                  gradientColors: [Colors.white38, Colors.white],
                 )
               : Text(
                   'SUBMIT OPPORTUNITY',

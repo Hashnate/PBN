@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
-import 'package:provider/provider.dart';
 import 'package:pbn/core/constants/app_colors.dart';
-import 'package:pbn/core/providers/notification_provider.dart';
-import 'package:pbn/core/providers/auth_provider.dart';
+import 'package:pbn/core/providers/riverpod_providers.dart';
 import 'package:pbn/features/community/community_page.dart';
 
 class PbnAppBarActions extends StatelessWidget {
@@ -13,12 +12,14 @@ class PbnAppBarActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    if (auth.user?.role.toUpperCase() == 'PROSPECT') {
-      return const SizedBox.shrink();
-    }
+    return Consumer(
+      builder: (context, ref, _) {
+        final auth = ref.watch(authRiverpodProvider);
+        if (auth.user?.role.toUpperCase() == 'PROSPECT') {
+          return const SizedBox.shrink();
+        }
 
-    final notifs = context.watch<NotificationProvider>();
+        final notifs = ref.watch(notificationRiverpodProvider);
     
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -78,6 +79,8 @@ class PbnAppBarActions extends StatelessWidget {
         ],
         const SizedBox(width: 16),
       ],
+    );
+      },
     );
   }
 

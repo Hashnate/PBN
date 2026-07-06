@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:pbn/core/constants/app_colors.dart';
-import 'package:pbn/core/providers/auth_provider.dart';
+import 'package:pbn/core/providers/riverpod_providers.dart';
 import 'package:pbn/core/services/prefs_service.dart';
 import 'package:pbn/core/widgets/animated_pbn_logo.dart';
 
@@ -24,7 +23,7 @@ class _SplashPageState extends State<SplashPage> {
     await Future.delayed(const Duration(milliseconds: 2500));
     
     if (!mounted) return;
-    final auth = context.read<AuthProvider>();
+    final auth = context.read(authRiverpodProvider);
     await auth.tryAutoLogin();
 
     if (!mounted) return;

@@ -55,6 +55,7 @@ By joining, you become part of a strong ecosystem built on reliable partnerships
   }
 
   Future<void> _loadStats() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _loadError = false;

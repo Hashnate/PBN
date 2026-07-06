@@ -3,12 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
 import 'package:skeletonizer/skeletonizer.dart' as sk;
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:pbn/core/constants/app_colors.dart';
-import 'package:pbn/core/providers/member_provider.dart';
+import 'package:pbn/core/providers/riverpod_providers.dart';
 import 'package:pbn/core/services/matchmaking_service.dart';
 import 'package:pbn/core/widgets/cached_avatar.dart';
 import 'package:pbn/core/widgets/pbn_bottom_sheet.dart';
@@ -958,7 +957,7 @@ class _AiMatchesViewState extends State<AiMatchesView> {
   }
 
   Future<void> _handleConnect(MatchSuggestion match) async {
-    final memberProvider = Provider.of<MemberProvider>(context, listen: false);
+    final memberProvider = context.read(memberRiverpodProvider);
     
     if (memberProvider.members.isEmpty) {
       await memberProvider.fetchMembers();

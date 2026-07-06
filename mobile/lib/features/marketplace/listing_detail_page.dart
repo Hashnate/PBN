@@ -3,13 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:pbn/core/constants/app_colors.dart';
-import 'package:pbn/core/providers/auth_provider.dart';
+import 'package:pbn/core/providers/riverpod_providers.dart';
 import 'package:pbn/core/services/marketplace_service.dart';
+import 'package:pbn/core/widgets/cached_avatar.dart';
 import 'package:pbn/models/marketplace.dart';
+import 'package:pbn/models/member.dart';
 
 class ListingDetailPage extends StatefulWidget {
   final MarketplaceListing listing;
@@ -25,11 +26,39 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   bool _submittingInterest = false;
   int _activeImage = 0;
   late MarketplaceListing _listing;
+  Member? _sellerMember;
 
   @override
   void initState() {
     super.initState();
     _listing = widget.listing;
+    _loadSellerMember();
+  }
+
+  Future<void> _loadSellerMember() async {
+    final memberProvider = context.read(memberRiverpodProvider);
+    final found = memberProvider.members.where((m) => m.userId == _listing.sellerId).firstOrNull;
+    if (found != null) {
+      if (mounted) setState(() => _sellerMember = found);
+      return;
+    }
+
+    if (memberProvider.members.isEmpty) {
+      try {
+        await memberProvider.fetchMembers(background: true);
+        final freshFound = memberProvider.members.where((m) => m.userId == _listing.sellerId).firstOrNull;
+        if (freshFound != null && mounted) {
+          setState(() => _sellerMember = freshFound);
+        }
+      } catch (_) {}
+    }
+  }
+
+  String get _sellerInitials {
+    final name = _listing.sellerName ?? 'Verified Member';
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
   }
 
   @override
@@ -42,7 +71,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   // ACTIONS
   // ──────────────────────────────────────────────────────────
   Future<void> _expressInterest() async {
-    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final auth = context.read(authRiverpodProvider);
     if (auth.user?.id == _listing.sellerId) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -119,7 +148,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
         _listing.contactPhone != null ||
         _listing.contactEmail != null;
 
-    final isOwnListing = Provider.of<AuthProvider>(context, listen: false)
+    final isOwnListing = context.read(authRiverpodProvider)
             .user
             ?.id ==
         _listing.sellerId;
@@ -618,6 +647,9 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   // SELLER CARD
   // ──────────────────────────────────────────────────────────
   Widget _buildSellerCard() {
+    final avatarUrl = _sellerMember?.profilePhoto;
+    final initials = _sellerMember?.initials ?? _sellerInitials;
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -643,15 +675,10 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
               ),
               boxShadow: AppColors.goldGlow,
             ),
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: const BoxDecoration(
-                color: AppColors.primary,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(TablerIcons.user,
-                  color: AppColors.accent, size: 22),
+            child: CachedAvatar(
+              imageUrl: avatarUrl,
+              initials: initials,
+              size: 40,
             ),
           ),
           const SizedBox(width: 14),
