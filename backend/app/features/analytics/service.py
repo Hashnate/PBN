@@ -414,7 +414,10 @@ async def get_admin_overview(db: AsyncSession) -> Dict[str, Any]:
 
     # ── Current cumulative values ───────────────────────────────────────────
     total_members = (await db.execute(
-        select(func.count(1)).where(User.role == UserRole.MEMBER)
+        select(func.count(1)).where(
+            User.role == UserRole.MEMBER,
+            User.full_name.not_ilike("%system lock%")
+        )
     )).scalar_one()
 
     ref_stmt = select(
@@ -441,6 +444,7 @@ async def get_admin_overview(db: AsyncSession) -> Dict[str, Any]:
     prev_total_members = (await db.execute(
         select(func.count(1)).where(
             User.role == UserRole.MEMBER,
+            User.full_name.not_ilike("%system lock%"),
             User.created_at <= cutoff,
         )
     )).scalar_one()
@@ -542,6 +546,7 @@ async def get_admin_timeseries(metric: str, days: int, db: AsyncSession) -> Dict
             func.count(1).label("v"),
         ).where(
             User.role == UserRole.MEMBER,
+            User.full_name.not_ilike("%system lock%"),
             User.created_at >= start,
         ).group_by(text("ts")).order_by(text("ts"))
     elif metric == 'revenue':
