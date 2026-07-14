@@ -103,6 +103,10 @@ async def get_my_verification_status(
         request_id = str(req.id)
         created_at = req.created_at.isoformat()
 
+    # If the user is already verified (tier is not NONE), ensure status is approved
+    if current_user.verification_level != VerificationLevel.NONE:
+        current_status = "approved"
+
     # Can request verification if criteria is met and no pending/approved request exists
     can_request = (
         business_value_met and 

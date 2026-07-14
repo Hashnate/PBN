@@ -17,7 +17,7 @@ from app.core.response import success_response, error_response
 from app.features.auth.dependencies import get_current_user, require_role
 from app.features.payments.schemas import (
     PaymentInitiate, SimulateWebhook, PaymentCreateAdmin, PaymentUpdateAdmin,
-    PaymentProofUpload, PaymentProofReview, PaymentProofResponse
+    PaymentProofUpload, PaymentProofReview, PaymentProofResponse, TestPaymentLinkCreate
 )
 from app.features.payments import service
 from app.models.payment_proofs import PaymentProofStatus
@@ -235,3 +235,19 @@ async def admin_reject_payment_proof_endpoint(
 ) -> ORJSONResponse:
     result = await service.reject_payment_proof(proof_id, current_user, data.notes, db)
     return success_response(data=result)
+
+
+@router.post("/payments/generate-link", summary="Generate a payment link (non-production only)")
+async def generate_test_payment_link_endpoint(
+    data: TestPaymentLinkCreate,
+    db: AsyncSession = Depends(get_db),
+) -> ORJSONResponse:
+    settings = get_settings()
+    if settings.ENVIRONMENT == "production":
+        return error_response(
+            message="Payment link generation not available in production",
+            code="NOT_AVAILABLE",
+            status_code=403,
+        )
+    result = await service.generate_test_payment_link(data, db)
+    return success_response(data=result, message="Payment link generated successfully")

@@ -1481,7 +1481,7 @@ function MembersPage() {
   const [districtFilter, setDistrictFilter] = useState('');
   const [chapterFilter, setChapterFilter] = useState('');
   const [industryFilter, setIndustryFilter] = useState('');
-  const [roleFilter, setRoleFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState('MEMBER');
   const [selectedUser, setSelectedUser] = useState(null);
 
   // Member detail page is navigated to via ?member=<uuid>. We track the id
@@ -1583,6 +1583,34 @@ function MembersPage() {
         subtitle={total > 0 ? `${total.toLocaleString()} people in the directory` : undefined}
         flush
       >
+        <div style={{ display: 'flex', gap: '1.5rem', borderBottom: '1px solid var(--border-subtle)', padding: '0 var(--space-6)' }}>
+          {[
+            { id: 'MEMBER', label: 'Members' },
+            { id: 'PROSPECT', label: 'Prospects' },
+            { id: 'PARTNER_ADMIN', label: 'Partners' },
+            { id: 'CHAPTER_ADMIN', label: 'Chapter Admins' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => { setRoleFilter(tab.id); setPage(1); }}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '0.75rem 0',
+                fontWeight: 600,
+                fontSize: '0.9rem',
+                color: roleFilter === tab.id ? 'var(--brand-blue)' : 'var(--fg-muted)',
+                borderBottom: roleFilter === tab.id ? '2px solid var(--brand-blue)' : '2px solid transparent',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', padding: 'var(--space-5) var(--space-6)', borderBottom: '1px solid var(--border-subtle)' }}>
           <Ds.Input
             placeholder="Search by name, phone or chapter…"
@@ -1624,14 +1652,6 @@ function MembersPage() {
             allowClear
             onChange={val => { setIndustryFilter(val); setPage(1); }}
             style={{ width: 220 }}
-          />
-          <Ds.Select
-            placeholder="All roles"
-            value={roleFilter}
-            options={roleOptions}
-            allowClear
-            onChange={val => { setRoleFilter(val); setPage(1); }}
-            style={{ width: 180 }}
           />
         </div>
 
@@ -7863,6 +7883,7 @@ function ChaptersPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingChapter, setEditingChapter] = useState(null);
+  const [selectedLockedChapter, setSelectedLockedChapter] = useState(null);
 
   // Filters state
   const [search, setSearch] = useState('');
@@ -7988,16 +8009,17 @@ function ChaptersPage() {
               <th>Chapter</th>
               <th>District</th>
               <th>Meeting schedule</th>
+              <th>Locked Slots</th>
               <th>Status</th>
               <th className="ds-table__actions" />
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <Ds.Table.LoadingRow colSpan={5} label="Loading chapters…" />
+              <Ds.Table.LoadingRow colSpan={6} label="Loading chapters…" />
             ) : filteredChapters.length === 0 ? (
               <Ds.Table.EmptyRow
-                colSpan={5}
+                colSpan={6}
                 icon={IconBuildingCommunity}
                 title="No chapters found"
                 description={chapters.length === 0 ? "Add the first chapter to get started." : "Try adjusting your filters or search."}
@@ -8012,6 +8034,27 @@ function ChaptersPage() {
                   </span>
                 </td>
                 <td className="ds-table__muted">{c.meeting_schedule || '—'}</td>
+                <td>
+                  {c.locked_count > 0 ? (
+                    <button
+                      onClick={() => setSelectedLockedChapter(c)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Ds.Badge variant="warning" style={{ cursor: 'pointer' }}>
+                        {c.locked_count} Locked
+                      </Ds.Badge>
+                    </button>
+                  ) : (
+                    <span style={{ color: 'var(--fg-muted)', fontSize: 'var(--text-sm)' }}>—</span>
+                  )}
+                </td>
                 <td>
                   <Ds.Badge dot variant={c.is_active ? 'success' : 'danger'}>
                     {c.is_active ? 'Active' : 'Inactive'}
@@ -8038,7 +8081,120 @@ function ChaptersPage() {
           onSave={handleSave}
         />
       )}
+
+      {selectedLockedChapter && (
+        <LockedIndustriesModal
+          chapter={selectedLockedChapter}
+          onClose={() => {
+            setSelectedLockedChapter(null);
+            fetchChapters();
+          }}
+        />
+      )}
     </section>
+  );
+}
+
+function LockedIndustriesModal({ chapter, onClose }) {
+  const [lockedList, setLockedList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [unlockingId, setUnlockingId] = useState(null);
+
+  const fetchLocked = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await api.getLockedIndustries(chapter.id);
+      setLockedList(data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [chapter.id]);
+
+  useEffect(() => {
+    fetchLocked();
+  }, [fetchLocked]);
+
+  const handleUnlock = async (industryId, industryName) => {
+    if (!window.confirm(`Are you sure you want to unlock the "${industryName}" industry slot for ${chapter.name}?`)) return;
+    setUnlockingId(industryId);
+    try {
+      await api.unlockIndustry(chapter.id, industryId);
+      fetchLocked();
+    } catch (err) {
+      alert(`Failed to unlock: ${err.message}`);
+    } finally {
+      setUnlockingId(null);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 450 }}>
+        <div className="modal-header">
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Locked Industries</h2>
+          <button type="button" className="modal-close-btn" onClick={onClose}>
+            <IconX size={20} />
+          </button>
+        </div>
+        <div style={{ padding: '1.5rem' }}>
+          <h3 style={{ fontWeight: 800, marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+            Chapter: {chapter.name}
+          </h3>
+          {loading ? (
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+              Loading locked industries...
+            </div>
+          ) : lockedList.length === 0 ? (
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+              No locked industries found in this chapter.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '300px', overflowY: 'auto' }}>
+              {lockedList.map(ind => (
+                <div
+                  key={ind.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.75rem 1rem',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px'
+                  }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{ind.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleUnlock(ind.id, ind.name)}
+                    disabled={unlockingId === ind.id}
+                    style={{
+                      background: '#fee2e2',
+                      color: '#dc2626',
+                      border: '1px solid #fecaca',
+                      borderRadius: '8px',
+                      padding: '4px 10px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {unlockingId === ind.id ? 'Unlocking...' : 'Unlock'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+            <button type="button" className="login-btn" onClick={onClose} style={{ background: 'var(--border-default)', color: 'var(--text)', border: 'none' }}>
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

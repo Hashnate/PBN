@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PBN Payment Link Generator | Prime Business Network</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" type="image/png" href="/favicon.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --navy-deep: #050814;
+            --navy-dark: #080d24;
+            --navy-mid: #0e1535;
+            --navy-light: #162050;
+            --gold: #c9a84c;
+            --gold-light: #e8c97a;
+            --gold-dark: #a1853b;
+            --white: #ffffff;
+            --success: #10b981;
+            --error: #ef4444;
+            --text-muted: #8e9bbd;
+            --glass-bg: rgba(255, 255, 255, 0.02);
+            --glass-border: rgba(255, 255, 255, 0.06);
+            --card-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.7);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--navy-deep);
+            color: var(--white);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+            position: relative;
+            padding: 24px;
+        }
+
+        /* Ambient Glow Background */
+        .ambient-glow-1 {
+            position: absolute;
+            top: -20%;
+            left: -10%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(201, 168, 76, 0.06) 0%, transparent 70%);
+            filter: blur(80px);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .ambient-glow-2 {
+            position: absolute;
+            bottom: -20%;
+            right: -10%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(22, 32, 80, 0.4) 0%, transparent 70%);
+            filter: blur(80px);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .generator-container {
+            width: 100%;
+            max-width: 580px;
+            z-index: 10;
+            position: relative;
+        }
+
+        .generator-card {
+            background: linear-gradient(135deg, var(--navy-dark), var(--navy-mid));
+            border: 1px solid var(--glass-border);
+            border-radius: 32px;
+            padding: 48px 40px;
+            box-shadow: var(--card-shadow);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .generator-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--gold-dark), var(--gold-light), var(--gold-dark));
+        }
+
+        .brand-header {
+            margin-bottom: 32px;
+            text-align: center;
+        }
+
+        .brand-logo-text {
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            text-transform: uppercase;
+        }
+
+        .brand-logo-text span {
+            color: var(--gold);
+            background: linear-gradient(90deg, var(--gold-light), var(--gold));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .generator-title {
+            font-size: 1.35rem;
+            font-weight: 600;
+            color: var(--white);
+            margin-top: 12px;
+            letter-spacing: 0.2px;
+        }
+
+        .generator-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            color: var(--white);
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--gold);
+            box-shadow: 0 0 10px rgba(201, 168, 76, 0.15);
+        }
+
+        select.form-input {
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%238e9bbd' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            background-size: 18px;
+            padding-right: 40px;
+        }
+
+        select.form-input option {
+            background-color: var(--navy-dark);
+            color: var(--white);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--gold-light), var(--gold-dark));
+            color: var(--navy-deep);
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 6px 20px rgba(201, 168, 76, 0.15);
+            margin-top: 28px;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(201, 168, 76, 0.3);
+            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+        }
+
+        .btn-submit:active {
+            transform: translateY(1px);
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(5, 8, 20, 0.2);
+            border-top-color: var(--navy-deep);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Result Section */
+        .result-container {
+            display: none;
+            background: rgba(16, 185, 129, 0.04);
+            border: 1px solid rgba(16, 185, 129, 0.15);
+            border-radius: 20px;
+            padding: 24px;
+            margin-top: 32px;
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--success);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .result-link-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 14px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: var(--gold-light);
+            word-break: break-all;
+            margin-bottom: 20px;
+            user-select: all;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-action {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-copy {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            color: var(--white);
+        }
+
+        .btn-copy:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-go {
+            background: var(--success);
+            border: 1px solid transparent;
+            color: var(--navy-deep);
+        }
+
+        .btn-go:hover {
+            background: #0ea5e9;
+            filter: brightness(1.1);
+        }
+
+    </style>
+</head>
+<body>
+    <div class="ambient-glow-1"></div>
+    <div class="ambient-glow-2"></div>
+
+    <div class="generator-container">
+        <div class="generator-card">
+            <div class="brand-header">
+                <span class="brand-logo-text">Prime <span>Business</span> Network</span>
+                <h2 class="generator-title">Payment Link Generator</h2>
+                <p class="generator-subtitle">Create secure, direct payment links for custom membership dues, regional meeting fees, and renewals.</p>
+            </div>
+
+            <form id="generator-form" onsubmit="generateLink(event)">
+                <div class="form-group">
+                    <label class="form-label" for="payment_type">Fee Category</label>
+                    <select class="form-input" id="payment_type" required>
+                        <option value="membership">Membership Fee</option>
+                        <option value="meeting_fee">Meeting / Event Ticket Fee</option>
+                        <option value="renewal">Annual Renewal Fee</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="amount">Billing Amount (LKR)</label>
+                    <input class="form-input" type="number" id="amount" min="10" value="15000" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="reason">Description / Note</label>
+                    <input class="form-input" type="text" id="reason" placeholder="e.g. Flagship Chapter Admission Fee" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="email">Member Email</label>
+                    <input class="form-input" type="email" id="email" value="member@primebusiness.network" placeholder="e.g. member@primebusiness.network" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="full_name">Member Name (Optional)</label>
+                    <input class="form-input" type="text" id="full_name" value="Active Member" placeholder="e.g. John Doe">
+                </div>
+
+                <button class="btn-submit" type="submit" id="submit-btn">
+                    <span class="spinner" id="btn-spinner"></span>
+                    <span id="btn-text">Generate Payment Link</span>
+                </button>
+            </form>
+
+            <!-- RESULT SECTION -->
+            <div class="result-container" id="result-box">
+                <div class="result-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    Secure Payment Link Generated Successfully!
+                </div>
+                <div class="result-link-box" id="result-link">
+                    https://primebusiness.network/payments/checkout.html?token=xxxxx
+                </div>
+                <div class="result-actions">
+                    <button class="btn-action btn-copy" onclick="copyLink()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        Copy Link
+                    </button>
+                    <a class="btn-action btn-go" id="go-link" href="#" target="_blank">
+                        Go to Payment Page
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.pathname.startsWith('/payments')
+            ? '/payments/api/v1'
+            : (window.location.origin.includes('localhost') 
+                ? (window.location.port === '8006' ? '/api/v1' : 'http://localhost:8000/api/v1')
+                : '/api/v1');
+
+        // Auto-fill typical amounts on fee category change
+        const paymentTypeSelect = document.getElementById('payment_type');
+        const amountInput = document.getElementById('amount');
+
+        paymentTypeSelect.addEventListener('change', () => {
+            const val = paymentTypeSelect.value;
+            if (val === 'membership' || val === 'renewal') {
+                amountInput.value = 15000;
+            } else if (val === 'meeting_fee') {
+                amountInput.value = 6000;
+            }
+        });
+
+        async function generateLink(event) {
+            event.preventDefault();
+            
+            const submitBtn = document.getElementById('submit-btn');
+            const spinner = document.getElementById('btn-spinner');
+            const btnText = document.getElementById('btn-text');
+            const resultBox = document.getElementById('result-box');
+
+            submitBtn.disabled = true;
+            spinner.style.display = 'inline-block';
+            btnText.textContent = "Creating Transaction...";
+            resultBox.style.display = 'none';
+
+            const payload = {
+                payment_type: document.getElementById('payment_type').value,
+                amount: parseFloat(document.getElementById('amount').value),
+                reason: document.getElementById('reason').value,
+                email: document.getElementById('email').value || null,
+                full_name: document.getElementById('full_name').value || null
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/payments/generate-link`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const resData = await response.json();
+                
+                if (response.ok && resData.data && resData.data.checkout_url) {
+                    const checkoutUrl = resData.data.checkout_url;
+                    document.getElementById('result-link').textContent = checkoutUrl;
+                    document.getElementById('go-link').href = checkoutUrl;
+                    resultBox.style.display = 'block';
+                    resultBox.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    alert(resData.message || "Failed to generate payment link.");
+                }
+            } catch (err) {
+                alert("Network error. Failed to reach the generator API.");
+            } finally {
+                submitBtn.disabled = false;
+                spinner.style.display = 'none';
+                btnText.textContent = "Generate Payment Link";
+            }
+        }
+
+        function copyLink() {
+            const linkText = document.getElementById('result-link').textContent;
+            navigator.clipboard.writeText(linkText).then(() => {
+                alert("Payment link copied to clipboard!");
+            }).catch(err => {
+                alert("Failed to copy link. Please manually copy the link text.");
+            });
+        }
+    </script>
+</body>
+</html>

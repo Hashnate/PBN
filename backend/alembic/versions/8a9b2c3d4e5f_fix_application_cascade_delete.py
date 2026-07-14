@@ -18,13 +18,18 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Drop existing foreign key if it exists and recreate with CASCADE
-    # We use a try-except block in SQL or just drop it if we are sure of the name
-    # In Alembic, we usually use drop_constraint
-    try:
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    
+    # Ensure the column chapter_id exists on applications
+    columns = [col['name'] for col in inspector.get_columns('applications')]
+    if 'chapter_id' not in columns:
+        op.add_column('applications', sa.Column('chapter_id', sa.UUID(), nullable=True))
+        
+    fkeys = inspector.get_foreign_keys('applications')
+    fkey_names = [fk['name'] for fk in fkeys]
+    if 'applications_chapter_id_fkey' in fkey_names:
         op.drop_constraint('applications_chapter_id_fkey', 'applications', type_='foreignkey')
-    except Exception:
-        pass
         
     op.create_foreign_key(
         'applications_chapter_id_fkey',

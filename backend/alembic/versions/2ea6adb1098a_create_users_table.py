@@ -27,6 +27,8 @@ def upgrade() -> None:
     sa.Column('role', sa.Enum('PROSPECT', 'MEMBER', 'CHAPTER_ADMIN', 'SUPER_ADMIN', name='user_role'), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('fcm_token', sa.String(length=500), nullable=True),
+    sa.Column('password_hash', sa.String(length=255), nullable=True),
+    sa.Column('must_change_password', sa.Boolean(), nullable=False, server_default=sa.text('false')),
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),

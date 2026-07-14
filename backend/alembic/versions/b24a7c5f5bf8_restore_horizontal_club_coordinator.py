@@ -18,8 +18,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # Add back the coordinator_user_id column which was accidentally dropped
-    op.add_column('horizontal_clubs', sa.Column('coordinator_user_id', sa.UUID(), nullable=True))
-    op.create_foreign_key('horizontal_clubs_coordinator_user_id_fkey', 'horizontal_clubs', 'users', ['coordinator_user_id'], ['id'], ondelete='SET NULL')
+    # First inspect if the column is already present to prevent duplicate column errors
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [col['name'] for col in inspector.get_columns('horizontal_clubs')]
+    if 'coordinator_user_id' not in columns:
+        op.add_column('horizontal_clubs', sa.Column('coordinator_user_id', sa.UUID(), nullable=True))
+        op.create_foreign_key('horizontal_clubs_coordinator_user_id_fkey', 'horizontal_clubs', 'users', ['coordinator_user_id'], ['id'], ondelete='SET NULL')
 
 
 def downgrade() -> None:

@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 import uuid
+
+logger = logging.getLogger(__name__)
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from typing import Any, Dict, List
@@ -928,3 +931,102 @@ async def reject_payment_proof(proof_id: UUID, current_user: Any, notes: str | N
     
     await db.flush()
     return {"message": "Payment proof rejected successfully."}
+
+
+async def generate_test_payment_link(data: TestPaymentLinkCreate, db: AsyncSession) -> Dict[str, Any]:
+    from app.models.user import User, UserRole
+    from app.models.payments import Payment, PaymentStatus
+    from app.models.payment_proofs import PaymentProof, PaymentProofStatus
+    from datetime import datetime, timezone, timedelta
+    import uuid
+    from sqlalchemy import select
+    
+    # 1. Find or create a test user
+    email = data.email or "sandbox-tester@primebusiness.network"
+    name = data.full_name or "Sandbox Tester"
+    phone = "+94770000000"
+    
+    stmt = select(User).where(User.email == email)
+    res = await db.execute(stmt)
+    user = res.scalar_one_or_none()
+    
+    if not user:
+        # Check if phone number exists
+        stmt_p = select(User).where(User.phone_number == phone)
+        res_p = await db.execute(stmt_p)
+        user = res_p.scalar_one_or_none()
+        
+    if not user:
+        user = User(
+            phone_number=phone,
+            email=email,
+            full_name=name,
+            role=UserRole.PROSPECT,
+            is_active=True
+        )
+        db.add(user)
+        await db.flush()
+        
+    # 2. Create the Payment
+    payment = Payment(
+        user_id=user.id,
+        amount=data.amount,
+        payment_type=data.payment_type,
+        reason=data.reason or f"Test {data.payment_type.value.capitalize()} Fee",
+        status=PaymentStatus.PENDING
+    )
+    db.add(payment)
+    await db.flush()
+    
+    # 3. Create the PaymentProof
+    proof = PaymentProof(
+        payment_id=payment.id,
+        user_id=user.id,
+        upload_token=uuid.uuid4().hex,
+        upload_token_expires_at=datetime.now(timezone.utc) + timedelta(days=14),
+        status=PaymentProofStatus.PENDING_REVIEW
+    )
+    db.add(proof)
+    await db.flush()
+    await db.commit()
+    
+    # 4. Generate return url
+    settings = get_settings()
+    checkout_url = f"{settings.PUBLIC_SITE_URL.rstrip('/')}/checkout?token={proof.upload_token}"
+    
+    # 5. Send checkout link to member email
+    if data.email:
+        try:
+            from app.core.email_service import send_email, render_template
+            
+            # Map type code to clean label
+            type_labels = {
+                "membership": "Membership Fee",
+                "meeting_fee": "Meeting / Event Ticket Fee",
+                "renewal": "Annual Renewal Fee",
+            }
+            payment_type_label = type_labels.get(payment.payment_type.value, payment.payment_type.value.capitalize())
+            
+            # Render template
+            html = render_template("payment_link.html", {
+                "full_name": data.full_name or "Member",
+                "payment_type_label": payment_type_label,
+                "reason": payment.reason,
+                "amount": f"{payment.amount:,.2f}",
+                "checkout_url": checkout_url
+            })
+            
+            # Send
+            await send_email(data.email, f"PBN Payment Link: {payment_type_label}", html)
+            logger.info(f"Payment checkout link successfully emailed to {data.email}")
+        except Exception as e:
+            logger.error(f"Failed to email payment link to {data.email}: {e}")
+
+    return {
+        "payment_id": str(payment.id),
+        "upload_token": proof.upload_token,
+        "checkout_url": checkout_url,
+        "amount": str(payment.amount),
+        "payment_type": payment.payment_type.value,
+        "reason": payment.reason
+    }

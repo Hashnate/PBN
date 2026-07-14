@@ -143,6 +143,10 @@ export const api = {
     method: 'DELETE',
   }),
   getOccupiedIndustries: (chapterId) => apiFetch(`/chapters/${chapterId}/occupied-industries`),
+  getLockedIndustries: (chapterId) => apiFetch(`/chapters/${chapterId}/locked-industries`),
+  unlockIndustry: (chapterId, industryId) => apiFetch(`/chapters/${chapterId}/locked-industries/${industryId}`, {
+    method: 'DELETE',
+  }),
   uploadChapterPoster: (chapterId, file) => {
     const formData = new FormData();
     formData.append('file', file);

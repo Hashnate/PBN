@@ -30,6 +30,8 @@ from app.features.chapters.service import (
     list_chapters,
     remove_member,
     get_occupied_industry_ids,
+    get_locked_industries,
+    unlock_industry,
 )
 from app.models.memberships import ChapterMembership
 from app.models.user import User, UserRole
@@ -64,18 +66,35 @@ async def list_chapters_endpoint(
     from app.features.chapters.service import list_chapters
     chapters = await list_chapters(db, district=district, active_only=active_only)
 
-    # Lookup active member counts per chapter in a single grouped query —
-    # used by the admin Analytics Hub "Top Chapters" widget.
     counts_stmt = (
         select(
             ChapterMembership.chapter_id,
             func.count(1).label("members"),
         )
-        .where(ChapterMembership.is_active.is_(True))
+        .join(User, ChapterMembership.user_id == User.id)
+        .where(
+            ChapterMembership.is_active.is_(True),
+            User.full_name.not_ilike("%system lock%")
+        )
         .group_by(ChapterMembership.chapter_id)
     )
     counts_rows = (await db.execute(counts_stmt)).all()
     counts_by_chapter = {str(r.chapter_id): int(r.members) for r in counts_rows}
+
+    locked_stmt = (
+        select(
+            ChapterMembership.chapter_id,
+            func.count(1).label("locks"),
+        )
+        .join(User, ChapterMembership.user_id == User.id)
+        .where(
+            ChapterMembership.is_active.is_(True),
+            User.full_name.ilike("%system lock%")
+        )
+        .group_by(ChapterMembership.chapter_id)
+    )
+    locked_rows = (await db.execute(locked_stmt)).all()
+    locks_by_chapter = {str(r.chapter_id): int(r.locks) for r in locked_rows}
 
     return success_response(
         data=[
@@ -88,6 +107,7 @@ async def list_chapters_endpoint(
                 "poster_url": c.poster_url,
                 "is_active": c.is_active,
                 "member_count": counts_by_chapter.get(str(c.id), 0),
+                "locked_count": locks_by_chapter.get(str(c.id), 0),
             }
             for c in chapters
         ]
@@ -245,3 +265,30 @@ async def upload_chapter_poster_endpoint(
     await db.commit()
 
     return success_response(data={"poster_url": poster_url}, message="Poster uploaded successfully")
+
+
+@router.get(
+    "/{chapter_id}/locked-industries",
+    summary="Get list of locked industries for a chapter",
+)
+async def get_locked_industries_endpoint(
+    chapter_id: UUID,
+    db: AsyncSession = Depends(get_db),
+) -> ORJSONResponse:
+    industries = await get_locked_industries(chapter_id, db)
+    return success_response(data=industries)
+
+
+@router.delete(
+    "/{chapter_id}/locked-industries/{industry_id}",
+    summary="Unlock/release a locked industry in a chapter",
+    dependencies=[Depends(require_role([UserRole.SUPER_ADMIN, UserRole.ADMIN]))]
+)
+async def unlock_industry_endpoint(
+    chapter_id: UUID,
+    industry_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ORJSONResponse:
+    await unlock_industry(chapter_id, industry_id, current_user.id, db)
+    return success_response(message="Industry unlocked successfully")

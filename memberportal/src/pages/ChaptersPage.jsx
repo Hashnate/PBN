@@ -447,6 +447,7 @@ export default function ChaptersPage() {
               </div>
             </div>
 
+
             {/* CTA action buttons */}
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
               <button 

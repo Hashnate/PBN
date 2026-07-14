@@ -298,3 +298,57 @@ async def get_occupied_industry_ids(chapter_id: UUID, db: AsyncSession) -> List[
     member_ids = (await db.execute(member_stmt)).scalars().all()
     locked_ids = (await db.execute(locked_stmt)).scalars().all()
     return list({*member_ids, *locked_ids})
+
+
+async def get_locked_industries(chapter_id: UUID, db: AsyncSession) -> List[Dict[str, Any]]:
+    """Get all locked industries for a chapter by looking up System Lock memberships."""
+    stmt = (
+        select(IndustryCategory, ChapterMembership.id)
+        .join(ChapterMembership, ChapterMembership.industry_category_id == IndustryCategory.id)
+        .join(User, ChapterMembership.user_id == User.id)
+        .where(
+            ChapterMembership.chapter_id == chapter_id,
+            ChapterMembership.is_active.is_(True),
+            User.full_name.ilike("%system lock%")
+        )
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+    return [
+        {
+            "id": str(cat.id),
+            "name": cat.name,
+            "slug": cat.slug,
+            "membership_id": str(mem_id)
+        }
+        for cat, mem_id in rows
+    ]
+
+
+async def unlock_industry(chapter_id: UUID, industry_id: UUID, actor_id: UUID, db: AsyncSession) -> None:
+    """Unlock a system-locked industry for a chapter by deleting the membership."""
+    stmt = (
+        select(ChapterMembership)
+        .join(User, ChapterMembership.user_id == User.id)
+        .where(
+            ChapterMembership.chapter_id == chapter_id,
+            ChapterMembership.industry_category_id == industry_id,
+            ChapterMembership.is_active.is_(True),
+            User.full_name.ilike("%system lock%")
+        )
+    )
+    mem = (await db.execute(stmt)).scalars().first()
+    if not mem:
+        raise NotFoundException("Locked industry membership not found for this chapter")
+
+    await db.delete(mem)
+    
+    audit = AuditLog(
+        actor_id=actor_id,
+        entity_type="chapter_membership",
+        entity_id=mem.id,
+        action="unlock_industry",
+        old_value={"chapter_id": str(chapter_id), "industry_category_id": str(industry_id)},
+    )
+    db.add(audit)
+    await db.commit()

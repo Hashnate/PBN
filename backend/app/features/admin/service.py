@@ -112,6 +112,7 @@ async def list_users(
         .outerjoin(ChapterMembership, (User.id == ChapterMembership.user_id) & (ChapterMembership.is_active == True))
         .outerjoin(Chapter, ChapterMembership.chapter_id == Chapter.id)
         .outerjoin(IndustryCategory, ChapterMembership.industry_category_id == IndustryCategory.id)
+        .where(User.full_name.not_ilike("%system lock%"))
         .order_by(desc(User.created_at))
     )
 

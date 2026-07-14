@@ -60,7 +60,13 @@ def upgrade() -> None:
     op.execute("CREATE INDEX IF NOT EXISTS ix_card_history_user_id ON card_history (user_id)")
 
     # 3. Alter marketplace_listings (wrapped in try/except or safe SQL)
-    op.execute("ALTER TABLE marketplace_listings ALTER COLUMN is_approved SET NOT NULL")
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [col['name'] for col in inspector.get_columns('marketplace_listings')]
+    if 'is_approved' not in columns:
+        op.add_column('marketplace_listings', sa.Column('is_approved', sa.Boolean(), server_default=sa.text('false'), nullable=False))
+    else:
+        op.execute("ALTER TABLE marketplace_listings ALTER COLUMN is_approved SET NOT NULL")
 
     # 4. Add privilege_cards columns ONLY IF they don't exist
     op.execute("ALTER TABLE privilege_cards ADD COLUMN IF NOT EXISTS card_version INTEGER DEFAULT 1 NOT NULL")

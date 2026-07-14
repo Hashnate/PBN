@@ -75,3 +75,18 @@ class PaymentProofUpload(BaseModel):
 class PaymentProofReview(BaseModel):
     notes: Optional[str] = None
 
+
+class TestPaymentLinkCreate(BaseModel):
+    amount: Decimal
+    payment_type: PaymentType
+    reason: Optional[str] = None
+    email: str
+    full_name: Optional[str] = None
+
+    @field_validator("amount")
+    @classmethod
+    def amount_must_be_positive(cls, v: Decimal) -> Decimal:
+        if v <= 0:
+            raise ValueError("Amount must be positive")
+        return v
+

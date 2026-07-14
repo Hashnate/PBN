@@ -45,7 +45,16 @@ class BancstacService:
             "hmac": sig,
             "Cache-Control": "no-cache",
         }
-
+    def _parse_json_response(self, resp: httpx.Response) -> Dict[str, Any]:
+        """Parse HTTP response as JSON, throwing a descriptive error if gateway returned HTML."""
+        content_type = resp.headers.get("Content-Type", "")
+        if "text/html" in content_type or resp.text.strip().startswith("<!doctype"):
+            raise ValueError(
+                "Gateway returned an HTML response instead of JSON. "
+                "This typically indicates invalid merchant credentials (client ID, auth token, or HMAC secret) "
+                "or signature errors which caused the gateway firewall/CloudFront to block the request."
+            )
+        return resp.json()
     async def initiate_payment(
         self,
         amount: int,  # Amount in cents/cents-equivalent (LKR cents or LKR units based on environment)
@@ -75,7 +84,7 @@ class BancstacService:
                 "transactionType": "PURCHASE",
                 "transactionAmount": {
                     "totalAmount": amount,  # Min 200 in test environment
-                    "paymentAmount": 0,
+                    "paymentAmount": amount,
                     "serviceFeeAmount": 0,
                     "currency": "LKR"
                 },
@@ -105,8 +114,7 @@ class BancstacService:
         async with httpx.AsyncClient(timeout=15.0) as client:
             try:
                 resp = await client.post(self.api_url, content=payload_str, headers=headers)
-                resp.raise_for_status()
-                res_data = resp.json()
+                res_data = self._parse_json_response(resp)
                 
                 # Check for errors in the response body
                 if "error" in res_data or ("responseData" not in res_data and "message" in res_data):
@@ -157,8 +165,7 @@ class BancstacService:
         async with httpx.AsyncClient(timeout=15.0) as client:
             try:
                 resp = await client.post(self.api_url, content=payload_str, headers=headers)
-                resp.raise_for_status()
-                res_data = resp.json()
+                res_data = self._parse_json_response(resp)
                 
                 if "error" in res_data or ("responseData" not in res_data and "message" in res_data):
                     error_msg = res_data.get("message") or res_data.get("error", "Unknown error")

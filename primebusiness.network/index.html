@@ -2758,7 +2758,7 @@
     }
 
     /* ── MOBILE ── */
-    @media (max-width: 960px) {
+    @media (max-width: 1200px) {
       nav {
         padding: 16px 24px;
       }
@@ -2921,7 +2921,7 @@
     }
 
     /* ROI TABLE MOBILE */
-    @media (max-width: 960px) {
+    @media (max-width: 1200px) {
       .roi-table-wrap {
         overflow-x: unset;
       }
@@ -3338,7 +3338,7 @@
     <div class="reveal countdown-wrap">
       <div class="section-label">FLAGSHIP CHAPTER LAUNCH</div>
       <h2 class="section-title">The Countdown Is On</h2>
-      <p class="section-sub">We are starting our first chapter on <strong>15th of July at 6:00 PM Sri Lanka
+      <p class="section-sub">We are starting our first chapter on <strong>5th of August at 6:00 PM Sri Lanka
           Time</strong>. Don't miss your chance to secure your exclusive industry seat.</p>
 
       <div class="countdown-card">
@@ -3955,13 +3955,13 @@
         <div class="venue-name">Best Western Elyon Colombo</div>
         <div class="venue-role">Official Venue Partner</div>
       </div>
-      <div class="venue-card">
+      <!-- <div class="venue-card">
         <div class="venue-logo-wrap">
           <img src="Commercial_Bank_logo.svg.png" alt="Commercial Bank of Ceylon" />
         </div>
         <div class="venue-name" style="white-space: nowrap;">Commercial Bank of Ceylon</div>
-        <div class="venue-role">Official Banking Partner</div>
-      </div>
+        <div class="venue-role">Official Payment Partner</div>
+      </div> -->
     </div>
   </section>
 
@@ -4749,8 +4749,8 @@
   <script>
     // Countdown Timer initialization
     (function initCountdown() {
-      // July 15, 2026 6:00 PM Sri Lanka Time (UTC+5:30)
-      const targetDate = new Date("2026-07-15T18:00:00+05:30").getTime();
+      // August 5, 2026 6:00 PM Sri Lanka Time (UTC+5:30)
+      const targetDate = new Date("2026-08-05T18:00:00+05:30").getTime();
       let timerInterval;
 
       function updateCountdown() {
@@ -4795,7 +4795,7 @@
     // Nav compact on scroll
     window.addEventListener('scroll', () => {
       const nav = document.getElementById('mainNav');
-      const mob = window.innerWidth <= 960;
+      const mob = window.innerWidth <= 1200;
       nav.style.padding = window.scrollY > 40 ? (mob ? '10px 24px' : '12px 60px') : (mob ? '16px 24px' : '20px 60px');
     });
 
