@@ -49,6 +49,7 @@ class PartnerCreate(BaseModel):
     description: Optional[str] = None
     website: Optional[str] = None
     is_active: bool = True
+    admin_id: Optional[UUID] = None
 
 
 class PartnerUpdate(BaseModel):
@@ -57,6 +58,7 @@ class PartnerUpdate(BaseModel):
     description: Optional[str] = None
     website: Optional[str] = None
     is_active: Optional[bool] = None
+    admin_id: Optional[UUID] = None
 
 
 class OfferCreate(BaseModel):
@@ -93,6 +95,7 @@ class PartnerResponse(BaseModel):
     description: Optional[str]
     website: Optional[str]
     is_active: bool
+    admin_id: Optional[UUID] = None
     offers: List[OfferResponse] = []
 
 

@@ -3977,7 +3977,7 @@
       <div class="chapter-card" style="grid-column: 1 / -1;"><span class="ch-badge launch">★ Launching Now</span>
         <div class="ch-title">Flagship Mixed Primary Chapter — 30 Founding Seats</div>
         <div class="ch-tags"><span class="ch-tag">Lawyer</span><span class="ch-tag">Accountant</span><span
-            class="ch-tag">Financial Advisor</span><span class="ch-tag">Insurance Agent</span><span class="ch-tag">HR
+            class="ch-tag">Financial Advisor</span><span class="ch-tag">General Insurance</span><span class="ch-tag">HR
             Consultant</span><span class="ch-tag">Business Coach</span><span class="ch-tag">Corporate
             Trainer</span><span class="ch-tag">Company Secretary</span><span class="ch-tag">Tax Advisor</span><span
             class="ch-tag">Management Consultant</span><span class="ch-tag">Software Development</span><span
@@ -4168,10 +4168,10 @@
           <tr>
             <td data-label="Profession" class="rf-prof">Financial Advisor</td>
             <td data-label="Business They RECEIVE">Investment planning, wealth management, loans</td>
-            <td data-label="Business They CREATE FOR Others" class="rf-give">Lawyer, Accountant, Insurance Agent</td>
+            <td data-label="Business They CREATE FOR Others" class="rf-give">Lawyer, Accountant, General Insurance</td>
           </tr>
           <tr>
-            <td data-label="Profession" class="rf-prof">Insurance Agent</td>
+            <td data-label="Profession" class="rf-prof">General Insurance</td>
             <td data-label="Business They RECEIVE">Life, vehicle, business insurance</td>
             <td data-label="Business They CREATE FOR Others" class="rf-give">Financial Advisor, Real Estate Agent, HR
               Consultant</td>
@@ -4324,7 +4324,7 @@
           <tr>
             <td data-label="Profession" class="rf-prof">Logistics &amp; Freight</td>
             <td data-label="Business They RECEIVE">Import/export shipping, customs clearance, warehouse storage</td>
-            <td data-label="Business They CREATE FOR Others" class="rf-give">Insurance Agent, Tax Advisor, Accountant
+            <td data-label="Business They CREATE FOR Others" class="rf-give">General Insurance, Tax Advisor, Accountant
             </td>
           </tr>
           <tr>
@@ -4336,7 +4336,7 @@
           <tr>
             <td data-label="Profession" class="rf-prof">Travel Agent</td>
             <td data-label="Business They RECEIVE">Corporate travel, retreat bookings, visa assistance</td>
-            <td data-label="Business They CREATE FOR Others" class="rf-give">Event Organiser, Insurance Agent, HR
+            <td data-label="Business They CREATE FOR Others" class="rf-give">Event Organiser, General Insurance, HR
               Consultant</td>
           </tr>
         </tbody>
@@ -4964,17 +4964,6 @@
         select.style.overflow = 'hidden';
         select.style.clip = 'rect(0,0,0,0)';
         select.style.border = '0';
-
-        trigger.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (select.disabled) return;
-
-          const isOpen = wrapper.classList.contains('is-open');
-          closeAllCustomSelects();
-          if (!isOpen) {
-            wrapper.classList.add('is-open');
-          }
-        });
       }
 
       const trigger = wrapper.querySelector('.pbn-custom-select-trigger');
@@ -5001,6 +4990,66 @@
       }
 
       menu.innerHTML = '';
+      
+      // Setup dynamic search/filter trigger event
+      const searchBox = document.createElement('div');
+      let searchInput = null;
+
+      if (!select.disabled && select.options.length > 5) {
+        searchBox.className = 'pbn-custom-select-search-box';
+        searchBox.style.padding = '8px';
+        searchBox.style.borderBottom = '1px solid rgba(255, 255, 255, 0.08)';
+
+        searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.placeholder = 'Type to filter...';
+        searchInput.className = 'pbn-custom-select-input';
+        searchInput.style.width = '100%';
+        searchInput.style.padding = '8px 12px';
+        searchInput.style.background = 'rgba(255, 255, 255, 0.05)';
+        searchInput.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+        searchInput.style.borderRadius = '4px';
+        searchInput.style.color = '#fff';
+        searchInput.style.fontSize = '0.9rem';
+        searchInput.style.outline = 'none';
+
+        searchInput.addEventListener('click', (e) => e.stopPropagation());
+        searchInput.addEventListener('input', (e) => {
+          const val = e.target.value.toLowerCase();
+          const items = menu.querySelectorAll('.pbn-custom-select-item');
+          items.forEach(item => {
+            const txt = item.textContent.toLowerCase();
+            if (txt.includes(val)) {
+              item.style.display = '';
+            } else {
+              item.style.display = 'none';
+            }
+          });
+        });
+
+        searchBox.appendChild(searchInput);
+        menu.appendChild(searchBox);
+      }
+
+      trigger.onclick = (e) => {
+        e.stopPropagation();
+        if (select.disabled) return;
+
+        const isOpen = wrapper.classList.contains('is-open');
+        closeAllCustomSelects();
+        if (!isOpen) {
+          wrapper.classList.add('is-open');
+          if (searchInput) {
+            setTimeout(() => {
+              searchInput.value = '';
+              searchInput.focus();
+              const items = menu.querySelectorAll('.pbn-custom-select-item');
+              items.forEach(item => item.style.display = '');
+            }, 50);
+          }
+        }
+      };
+
       Array.from(select.options).forEach((opt, idx) => {
         const item = document.createElement('div');
         item.className = 'pbn-custom-select-item';

@@ -3,6 +3,7 @@ import {
   IconChartBar,
   IconEdit,
   IconUsers,
+  IconUserShield,
   IconHierarchy2,
   IconCoin,
   IconSettings,
@@ -285,7 +286,7 @@ function ApplicationDetailModal({ appId, onClose, onStatusUpdated }) {
         setChapters(chaptersData || []);
         setIndustries(industriesData || []);
         if (appData.chapter_id) setSelectedChapterId(appData.chapter_id);
-        setEditData({ district: appData.district || '', chapter_id: appData.chapter_id || '' });
+        setEditData({ ...appData });
         setFilteredEditChapters((chaptersData || []).filter(c => c.district === appData.district));
       })
       .catch(err => {
@@ -3678,6 +3679,893 @@ function PartnersTab() {
         />
       )}
     </div>
+  );
+}
+
+
+function CreatePartnerAdminModal({ onClose, onCreate, partners, showToast }) {
+  const [formData, setFormData] = useState({
+    full_name: '',
+    email: '',
+    phone_number: '',
+    password: '',
+    partner_id: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      // 1. Create the staff user
+      const user = await api.createStaff({
+        full_name: formData.full_name,
+        email: formData.email,
+        phone_number: formData.phone_number,
+        password: formData.password,
+        role: 'PARTNER_ADMIN'
+      });
+
+      // 2. Link to the selected partner if selected
+      if (formData.partner_id) {
+        await api.updatePartner(formData.partner_id, { admin_id: user.id });
+      }
+
+      showToast('Partner Administrator created successfully!');
+      onCreate();
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Failed to create partner admin');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 450 }}>
+        <div className="modal-header">
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Add Partner Admin</h2>
+          <button type="button" className="modal-close-btn" onClick={onClose}>
+            <IconX size={20} />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} style={{ padding: '1.5rem 1.5rem 2rem' }}>
+          {error && <div className="login-error" style={{ marginBottom: '1rem' }}>{error}</div>}
+          
+          <div className="login-field">
+            <label>Full Name *</label>
+            <input
+              type="text"
+              className="filter-input v2"
+              required
+              value={formData.full_name}
+              onChange={e => setFormData({ ...formData, full_name: e.target.value })}
+            />
+          </div>
+          <div className="login-field">
+            <label>Email Address *</label>
+            <input
+              type="email"
+              className="filter-input v2"
+              required
+              value={formData.email}
+              onChange={e => setFormData({ ...formData, email: e.target.value })}
+            />
+          </div>
+          <div className="login-field">
+            <label>Phone Number *</label>
+            <input
+              type="text"
+              className="filter-input v2"
+              required
+              placeholder="+94..."
+              value={formData.phone_number}
+              onChange={e => setFormData({ ...formData, phone_number: e.target.value })}
+            />
+          </div>
+          <div className="login-field">
+            <label>Password *</label>
+            <input
+              type="password"
+              className="filter-input v2"
+              required
+              value={formData.password}
+              onChange={e => setFormData({ ...formData, password: e.target.value })}
+            />
+          </div>
+          <div className="login-field">
+            <label>Managed Partner Profile</label>
+            <select
+              className="filter-input v2"
+              value={formData.partner_id}
+              onChange={e => setFormData({ ...formData, partner_id: e.target.value })}
+              style={{ width: '100%', height: '42px', padding: '0 12px' }}
+            >
+              <option value="">-- No managed partner (unlinked) --</option>
+              {partners.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <button type="submit" className="login-btn" style={{ marginTop: '1rem' }} disabled={loading}>
+            {loading ? 'Creating...' : 'Create Admin'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function EditPartnerAdminModal({ user, onClose, onUpdate, partners, currentPartner, showToast }) {
+  const [formData, setFormData] = useState({
+    full_name: user.full_name || '',
+    email: user.email || '',
+    phone_number: user.phone_number || '',
+    is_active: user.is_active ?? true,
+    partner_id: currentPartner?.id || ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      // 1. Update the user details
+      await api.updateUser(user.id, {
+        full_name: formData.full_name,
+        email: formData.email,
+        phone_number: formData.phone_number,
+        is_active: formData.is_active
+      });
+
+      // 2. Link/unlink partner if changed
+      const originalPartnerId = currentPartner?.id || '';
+      if (formData.partner_id !== originalPartnerId) {
+        if (originalPartnerId) {
+          // Clear old partner's admin link
+          await api.updatePartner(originalPartnerId, { admin_id: null });
+        }
+        if (formData.partner_id) {
+          // Link to new partner
+          await api.updatePartner(formData.partner_id, { admin_id: user.id });
+        }
+      }
+
+      showToast('Partner Administrator updated successfully!');
+      onUpdate();
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Failed to update partner admin');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 450 }}>
+        <div className="modal-header">
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Edit Partner Admin</h2>
+          <button type="button" className="modal-close-btn" onClick={onClose}>
+            <IconX size={20} />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} style={{ padding: '1.5rem 1.5rem 2rem' }}>
+          {error && <div className="login-error" style={{ marginBottom: '1rem' }}>{error}</div>}
+          
+          <div className="login-field">
+            <label>Full Name *</label>
+            <input
+              type="text"
+              className="filter-input v2"
+              required
+              value={formData.full_name}
+              onChange={e => setFormData({ ...formData, full_name: e.target.value })}
+            />
+          </div>
+          <div className="login-field">
+            <label>Email Address *</label>
+            <input
+              type="email"
+              className="filter-input v2"
+              required
+              value={formData.email}
+              onChange={e => setFormData({ ...formData, email: e.target.value })}
+            />
+          </div>
+          <div className="login-field">
+            <label>Phone Number *</label>
+            <input
+              type="text"
+              className="filter-input v2"
+              required
+              value={formData.phone_number}
+              onChange={e => setFormData({ ...formData, phone_number: e.target.value })}
+            />
+          </div>
+          <div className="login-field" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '1rem 0' }}>
+            <input
+              type="checkbox"
+              id="admin-active-status"
+              checked={formData.is_active}
+              onChange={e => setFormData({ ...formData, is_active: e.target.checked })}
+              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+            />
+            <label htmlFor="admin-active-status" style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}>Active Account</label>
+          </div>
+          <div className="login-field">
+            <label>Managed Partner Profile</label>
+            <select
+              className="filter-input v2"
+              value={formData.partner_id}
+              onChange={e => setFormData({ ...formData, partner_id: e.target.value })}
+              style={{ width: '100%', height: '42px', padding: '0 12px' }}
+            >
+              <option value="">-- No managed partner (unlinked) --</option>
+              {partners.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <button type="submit" className="login-btn" style={{ marginTop: '1rem' }} disabled={loading}>
+            {loading ? 'Saving...' : 'Save Changes'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function CreatePartnerWithAdminModal({ onClose, onCreated, admins, showToast }) {
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    logo_url: '',
+    website: '',
+    is_active: true,
+    admin_id: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    setError('');
+    try {
+      const result = await api.uploadPartnerLogo(file);
+      setFormData(prev => ({ ...prev, logo_url: result.logo_url }));
+    } catch (err) {
+      setError('Logo upload failed: ' + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const payload = { ...formData };
+      if (!payload.admin_id) delete payload.admin_id;
+      await api.createPartner(payload);
+      showToast('Partner profile created successfully!');
+      onCreated();
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Failed to create partner');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 500 }}>
+        <div className="modal-header">
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Add Partner Profile</h2>
+          <button type="button" className="modal-close-btn" onClick={onClose}>
+            <IconX size={20} />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} style={{ padding: '1.5rem 1.5rem 2rem' }}>
+          {error && <div className="login-error" style={{ marginBottom: '1rem' }}>{error}</div>}
+          
+          <div className="login-field">
+            <label>Business Name *</label>
+            <input
+              type="text"
+              className="filter-input v2"
+              required
+              value={formData.name}
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
+            />
+          </div>
+
+          <div className="login-field">
+            <label>Partner Logo</label>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div style={{ width: 64, height: 64, borderRadius: '12px', background: '#f8fafc', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0' }}>
+                {formData.logo_url ? <img src={formData.logo_url.startsWith('http') ? formData.logo_url : `${STATIC_BASE_URL}${formData.logo_url}`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <IconBuildingStore size={24} color="#94a3b8" />}
+              </div>
+              <div style={{ flex: 1 }}>
+                <input
+                  type="file"
+                  id="partner-logo-upload-custom"
+                  accept="image/*,image/svg+xml"
+                  style={{ display: 'none' }}
+                  onChange={handleFileUpload}
+                />
+                <label 
+                  htmlFor="partner-logo-upload-custom" 
+                  className="btn-secondary" 
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem', padding: '0.6rem 1rem' }}
+                >
+                  <IconPlus size={16} /> {uploading ? 'Uploading...' : formData.logo_url ? 'Change Logo' : 'Upload Logo'}
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div className="login-field">
+            <label>Website</label>
+            <input 
+              type="url" 
+              className="filter-input v2"
+              placeholder="https://partner-website.com"
+              value={formData.website}
+              onChange={e => setFormData({...formData, website: e.target.value})}
+            />
+          </div>
+          <div className="login-field">
+            <label>Description</label>
+            <textarea 
+              className="action-textarea"
+              style={{ minHeight: 80 }}
+              value={formData.description}
+              onChange={e => setFormData({...formData, description: e.target.value})}
+            />
+          </div>
+          <div className="login-field">
+            <label>Assign Partner Admin</label>
+            <select
+              className="filter-input v2"
+              value={formData.admin_id}
+              onChange={e => setFormData({ ...formData, admin_id: e.target.value })}
+              style={{ width: '100%', height: '42px', padding: '0 12px' }}
+            >
+              <option value="">-- No administrator assigned --</option>
+              {admins.map(adm => (
+                <option key={adm.id} value={adm.id}>{adm.full_name} ({adm.email})</option>
+              ))}
+            </select>
+          </div>
+          <button type="submit" className="login-btn" style={{ marginTop: '1rem' }} disabled={loading || uploading}>
+            {loading ? 'Creating...' : 'Create Partner'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function EditPartnerWithAdminModal({ partner, onClose, onUpdated, admins, showToast }) {
+  const [formData, setFormData] = useState({
+    name: partner.name || '',
+    description: partner.description || '',
+    logo_url: partner.logo_url || '',
+    website: partner.website || '',
+    is_active: partner.is_active ?? true,
+    admin_id: partner.admin_id || ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    setError('');
+    try {
+      const result = await api.uploadPartnerLogo(file);
+      setFormData(prev => ({ ...prev, logo_url: result.logo_url }));
+    } catch (err) {
+      setError('Logo upload failed: ' + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const payload = { ...formData };
+      if (!payload.admin_id) payload.admin_id = null;
+      await api.updatePartner(partner.id, payload);
+      showToast('Partner profile updated successfully!');
+      onUpdated();
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Failed to update partner');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 500 }}>
+        <div className="modal-header">
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Edit Partner Profile</h2>
+          <button type="button" className="modal-close-btn" onClick={onClose}>
+            <IconX size={20} />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} style={{ padding: '1.5rem 1.5rem 2rem' }}>
+          {error && <div className="login-error" style={{ marginBottom: '1rem' }}>{error}</div>}
+          
+          <div className="login-field">
+            <label>Business Name *</label>
+            <input
+              type="text"
+              className="filter-input v2"
+              required
+              value={formData.name}
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
+            />
+          </div>
+
+          <div className="login-field">
+            <label>Partner Logo</label>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div style={{ width: 64, height: 64, borderRadius: '12px', background: '#f8fafc', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0' }}>
+                {formData.logo_url ? <img src={formData.logo_url.startsWith('http') ? formData.logo_url : `${STATIC_BASE_URL}${formData.logo_url}`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <IconBuildingStore size={24} color="#94a3b8" />}
+              </div>
+              <div style={{ flex: 1 }}>
+                <input
+                  type="file"
+                  id="partner-logo-edit-upload-custom"
+                  accept="image/*,image/svg+xml"
+                  style={{ display: 'none' }}
+                  onChange={handleFileUpload}
+                />
+                <label 
+                  htmlFor="partner-logo-edit-upload-custom" 
+                  className="btn-secondary" 
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem', padding: '0.6rem 1rem' }}
+                >
+                  <IconPlus size={16} /> {uploading ? 'Uploading...' : formData.logo_url ? 'Change Logo' : 'Upload Logo'}
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div className="login-field">
+            <label>Website</label>
+            <input 
+              type="url" 
+              className="filter-input v2"
+              value={formData.website}
+              onChange={e => setFormData({...formData, website: e.target.value})}
+            />
+          </div>
+          <div className="login-field">
+            <label>Description</label>
+            <textarea 
+              className="action-textarea"
+              style={{ minHeight: 80 }}
+              value={formData.description}
+              onChange={e => setFormData({...formData, description: e.target.value})}
+            />
+          </div>
+          <div className="login-field">
+            <label>Assign Partner Admin</label>
+            <select
+              className="filter-input v2"
+              value={formData.admin_id}
+              onChange={e => setFormData({ ...formData, admin_id: e.target.value })}
+              style={{ width: '100%', height: '42px', padding: '0 12px' }}
+            >
+              <option value="">-- No administrator assigned --</option>
+              {admins.map(adm => (
+                <option key={adm.id} value={adm.id}>{adm.full_name} ({adm.email})</option>
+              ))}
+            </select>
+          </div>
+          <button type="submit" className="login-btn" style={{ marginTop: '1rem' }} disabled={loading || uploading}>
+            {loading ? 'Saving...' : 'Save Changes'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function PartnerAdminsPage({ showToast }) {
+  const [activeSubTab, setActiveSubTab] = useState('admins');
+  const [admins, setAdmins] = useState([]);
+  const [partners, setPartners] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  
+  // Modals state
+  const [showCreateAdmin, setShowCreateAdmin] = useState(false);
+  const [editingAdmin, setEditingAdmin] = useState(null);
+  const [showCreatePartner, setShowCreatePartner] = useState(false);
+  const [editingPartner, setEditingPartner] = useState(null);
+  const [addingOfferTo, setAddingOfferTo] = useState(null);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [adminsData, partnersData] = await Promise.all([
+        api.listStaff({ role: 'PARTNER_ADMIN' }),
+        api.listPartners(false)
+      ]);
+      setAdmins(adminsData.users || adminsData || []);
+      setPartners(partnersData || []);
+    } catch (err) {
+      console.error('Failed to load partner admin data:', err);
+      showToast('Failed to load data: ' + err.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleDeleteAdmin = async (userId) => {
+    if (!confirm('Are you sure you want to delete this Partner Administrator? This will not delete the partner profile itself.')) return;
+    try {
+      await api.deleteStaff(userId);
+      showToast('Partner Administrator deleted successfully!');
+      fetchData();
+    } catch (err) {
+      showToast('Failed to delete admin: ' + err.message, 'error');
+    }
+  };
+
+  const handleDeletePartner = async (partnerId) => {
+    if (!confirm('Are you sure you want to delete this Partner Profile? This will delete the partner and all of their offers permanently!')) return;
+    try {
+      await api.deletePartner(partnerId);
+      showToast('Partner Profile deleted successfully!');
+      fetchData();
+    } catch (err) {
+      showToast('Failed to delete partner: ' + err.message, 'error');
+    }
+  };
+
+  const handleDeleteOffer = async (offerId) => {
+    if (!confirm('Are you sure you want to delete this offer?')) return;
+    try {
+      await api.deleteOffer(offerId);
+      showToast('Offer deleted successfully!');
+      fetchData();
+    } catch (err) {
+      showToast('Failed to delete offer: ' + err.message, 'error');
+    }
+  };
+
+  const filteredAdmins = admins.filter(adm => {
+    const term = search.toLowerCase();
+    const nameMatch = adm.full_name?.toLowerCase().includes(term);
+    const emailMatch = adm.email?.toLowerCase().includes(term);
+    const phoneMatch = adm.phone_number?.toLowerCase().includes(term);
+    return nameMatch || emailMatch || phoneMatch;
+  });
+
+  const getPartnerForAdmin = (adminId) => {
+    return partners.find(p => p.admin_id === adminId);
+  };
+
+  return (
+    <section className="ds-page">
+      <Ds.PageHeader
+        title="Partner Management"
+        description="Configure partner accounts, manage partner admins, and handle exclusive member offers."
+        actions={
+          <Ds.ChipGroup
+            value={activeSubTab}
+            onChange={setActiveSubTab}
+            options={[
+              { value: 'admins', label: 'Partner Admins' },
+              { value: 'partners', label: 'Partners & Offers' },
+            ]}
+          />
+        }
+      />
+
+      {activeSubTab === 'admins' ? (
+        <Ds.Section
+          title="Partner Administrators"
+          subtitle={`${filteredAdmins.length} active admins`}
+          flush
+          actions={
+            <>
+              <Ds.Input
+                placeholder="Search admins..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                leftIcon={<IconSearch size={14} />}
+                size="sm"
+                style={{ width: 220 }}
+              />
+              <Ds.Button
+                variant="primary"
+                size="sm"
+                leftIcon={<IconPlus size={14} />}
+                onClick={() => setShowCreateAdmin(true)}
+              >
+                Add Partner Admin
+              </Ds.Button>
+            </>
+          }
+        >
+          <Ds.Table>
+            <thead>
+              <tr>
+                <th>Admin Name</th>
+                <th>Contact Info</th>
+                <th>Linked Partner</th>
+                <th>Status</th>
+                <th className="ds-table__actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <Ds.Table.LoadingRow colSpan={5} label="Loading admins..." />
+              ) : filteredAdmins.length === 0 ? (
+                <Ds.Table.EmptyRow
+                  colSpan={5}
+                  icon={IconUsers}
+                  title="No partner admins found"
+                  description="Add an administrator account to get started."
+                />
+              ) : filteredAdmins.map(adm => {
+                const linkedPartner = getPartnerForAdmin(adm.id);
+                return (
+                  <tr key={adm.id}>
+                    <td className="ds-table__primary">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                        <Ds.Avatar size="sm" name={adm.full_name || '?'} />
+                        <span>{adm.full_name}</span>
+                      </div>
+                    </td>
+                    <td className="ds-table__muted">
+                      <div>{adm.email || '—'}</div>
+                      <div style={{ fontSize: 'var(--text-xs)' }}>{adm.phone_number}</div>
+                    </td>
+                    <td>
+                      {linkedPartner ? (
+                        <Ds.Badge variant="brand">{linkedPartner.name}</Ds.Badge>
+                      ) : (
+                        <span style={{ color: 'var(--fg-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>Unlinked</span>
+                      )}
+                    </td>
+                    <td>
+                      <Ds.Badge dot variant={adm.is_active ? 'success' : 'danger'}>
+                        {adm.is_active ? 'Active' : 'Inactive'}
+                      </Ds.Badge>
+                    </td>
+                    <td className="ds-table__actions">
+                      <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
+                        <Ds.IconButton aria-label="Edit admin" onClick={() => setEditingAdmin(adm)}>
+                          <IconPencil size={16} />
+                        </Ds.IconButton>
+                        <Ds.IconButton aria-label="Delete admin" onClick={() => handleDeleteAdmin(adm.id)}>
+                          <IconTrash size={16} color="var(--danger)" />
+                        </Ds.IconButton>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Ds.Table>
+        </Ds.Section>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Partners & Brand Directory</h3>
+            <Ds.Button
+              variant="primary"
+              size="sm"
+              leftIcon={<IconPlus size={14} />}
+              onClick={() => setShowCreatePartner(true)}
+            >
+              Add Partner Profile
+            </Ds.Button>
+          </div>
+
+          {loading ? (
+            <Ds.LoadingRow label="Loading partners..." />
+          ) : partners.length === 0 ? (
+            <Ds.EmptyState
+              icon={IconBuildingStore}
+              title="No partners added yet"
+              description="Add a partner company to configure privilege offers."
+            />
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'var(--space-4)' }}>
+              {partners.map(p => {
+                const adminAccount = admins.find(adm => adm.id === p.admin_id);
+                return (
+                  <div
+                    key={p.id}
+                    style={{
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: 'var(--radius-lg)',
+                      background: 'var(--bg-surface)',
+                      padding: 'var(--space-5)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 'var(--space-4)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 'var(--space-4)' }}>
+                      <div style={{
+                        width: 60, height: 60,
+                        borderRadius: 'var(--radius-md)',
+                        background: 'var(--bg-subtle)',
+                        overflow: 'hidden',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0,
+                        border: '1px solid var(--border-subtle)'
+                      }}>
+                        {p.logo_url
+                          ? <img src={p.logo_url.startsWith('http') ? p.logo_url : `${STATIC_BASE_URL}${p.logo_url}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                          : <IconBuildingStore size={26} color="var(--fg-muted)" />}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--fg-primary)' }}>{p.name}</h4>
+                          <Ds.Badge variant={p.is_active ? 'success' : 'neutral'}>
+                            {p.is_active ? 'Active' : 'Inactive'}
+                          </Ds.Badge>
+                        </div>
+                        {p.description && <p style={{ fontSize: '0.9rem', color: 'var(--fg-secondary)', marginTop: '4px' }}>{p.description}</p>}
+                        <div style={{ display: 'flex', gap: '1rem', marginTop: '6px', fontSize: '0.8rem', flexWrap: 'wrap' }}>
+                          {p.website && <a href={p.website} target="_blank" rel="noreferrer" style={{ color: 'var(--brand-blue)', textDecoration: 'none' }}>{p.website}</a>}
+                          <span style={{ color: 'var(--fg-muted)' }}>
+                            Admin: {adminAccount ? `${adminAccount.full_name} (${adminAccount.email})` : 'None'}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <Ds.Button
+                          variant="secondary"
+                          size="sm"
+                          leftIcon={<IconPlus size={14} />}
+                          onClick={() => setAddingOfferTo(p)}
+                        >
+                          Add Reward
+                        </Ds.Button>
+                        <Ds.IconButton aria-label="Edit partner" onClick={() => setEditingPartner(p)}>
+                          <IconPencil size={16} />
+                        </Ds.IconButton>
+                        <Ds.IconButton aria-label="Delete partner" onClick={() => handleDeletePartner(p.id)}>
+                          <IconTrash size={16} color="var(--danger)" />
+                        </Ds.IconButton>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h5 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--fg-primary)', marginBottom: 'var(--space-3)' }}>
+                        Rewards & Offers ({p.offers?.length || 0})
+                      </h5>
+                      {(!p.offers || p.offers.length === 0) ? (
+                        <p style={{ fontSize: '0.85rem', color: 'var(--fg-muted)', fontStyle: 'italic' }}>No rewards configured for this partner.</p>
+                      ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-3)' }}>
+                          {p.offers.map(off => (
+                            <div
+                              key={off.id}
+                              style={{
+                                background: 'var(--bg-subtle)',
+                                borderRadius: 'var(--radius-md)',
+                                padding: 'var(--space-3) var(--space-4)',
+                                border: '1px solid var(--border-subtle)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '8px'
+                              }}
+                            >
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--fg-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  {off.title}
+                                  {off.discount_percentage && (
+                                    <span style={{ fontSize: '0.75rem', background: 'var(--success-bg)', color: 'var(--success)', padding: '2px 6px', borderRadius: '4px' }}>
+                                      {off.discount_percentage}% OFF
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--fg-secondary)', marginTop: '2px' }}>
+                                  Type: <span style={{ textTransform: 'capitalize' }}>{off.offer_type}</span> | Method: <span style={{ textTransform: 'uppercase' }}>{off.redemption_method}</span>
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--fg-muted)', marginTop: '4px' }}>
+                                  Validity: {new Date(off.start_date).toLocaleDateString()} - {new Date(off.end_date).toLocaleDateString()}
+                                </div>
+                              </div>
+                              <Ds.IconButton aria-label="Delete offer" onClick={() => handleDeleteOffer(off.id)}>
+                                <IconTrash size={14} color="var(--danger)" />
+                              </Ds.IconButton>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {showCreateAdmin && (
+        <CreatePartnerAdminModal
+          onClose={() => setShowCreateAdmin(false)}
+          onCreate={fetchData}
+          partners={partners}
+          showToast={showToast}
+        />
+      )}
+
+      {editingAdmin && (
+        <EditPartnerAdminModal
+          user={editingAdmin}
+          onClose={() => setEditingAdmin(null)}
+          onUpdate={fetchData}
+          partners={partners}
+          currentPartner={getPartnerForAdmin(editingAdmin.id)}
+          showToast={showToast}
+        />
+      )}
+
+      {showCreatePartner && (
+        <CreatePartnerWithAdminModal
+          onClose={() => setShowCreatePartner(false)}
+          onCreated={fetchData}
+          admins={admins}
+          showToast={showToast}
+        />
+      )}
+
+      {editingPartner && (
+        <EditPartnerWithAdminModal
+          partner={editingPartner}
+          onClose={() => setEditingPartner(null)}
+          onUpdated={fetchData}
+          admins={admins}
+          showToast={showToast}
+        />
+      )}
+
+      {addingOfferTo && (
+        <CreateOfferModal
+          partner={addingOfferTo}
+          onClose={() => setAddingOfferTo(null)}
+          onCreated={fetchData}
+        />
+      )}
+    </section>
   );
 }
 
@@ -9481,6 +10369,7 @@ export default function App() {
     if (activeTab === 'marketplace') return <MarketplacePage />;
     if (activeTab === 'payments') return <PaymentsPage />;
     if (activeTab === 'rewards') return <RewardsHubPage />;
+    if (activeTab === 'partner-admins') return <PartnerAdminsPage {...commonProps} />;
     if (activeTab === 'referrals') return <ReferralsPage />;
     if (activeTab === 'community') return <CommunityPage showToast={showToast} />;
     if (activeTab === 'events') return <EventsPage />;

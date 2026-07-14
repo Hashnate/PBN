@@ -342,3 +342,35 @@ async def partner_scan_endpoint(
     result = await _rewards_svc.partner_scan_token(body.token, partner.id, db)
     return success_response(data=result, message="QR Code scanned successfully!")
 
+
+@router.delete("/rewards/partners/{partner_id}", summary="Delete a partner")
+async def delete_partner_endpoint(
+    partner_id: UUID,
+    current_user: User = Depends(admin_req),
+    db: AsyncSession = Depends(get_db),
+) -> ORJSONResponse:
+    from app.models.privilege_cards import Partner
+    from app.core.exceptions import NotFoundException
+    partner = (await db.execute(_select(Partner).where(Partner.id == partner_id))).scalar_one_or_none()
+    if not partner:
+        raise NotFoundException("Partner not found")
+    await db.delete(partner)
+    await db.commit()
+    return success_response(message="Partner deleted successfully")
+
+
+@router.delete("/rewards/offers/{offer_id}", summary="Delete an offer")
+async def delete_offer_endpoint(
+    offer_id: UUID,
+    current_user: User = Depends(admin_req),
+    db: AsyncSession = Depends(get_db),
+) -> ORJSONResponse:
+    from app.models.privilege_cards import Offer
+    from app.core.exceptions import NotFoundException
+    offer = (await db.execute(_select(Offer).where(Offer.id == offer_id))).scalar_one_or_none()
+    if not offer:
+        raise NotFoundException("Offer not found")
+    await db.delete(offer)
+    await db.commit()
+    return success_response(message="Offer deleted successfully")
+

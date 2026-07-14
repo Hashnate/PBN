@@ -38,7 +38,7 @@ class MatchingProfile(Base, TimestampMixin):
     matching_preferences: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
     # Relationship to user
-    user = relationship("User", backref=backref("matching_profile", uselist=False), uselist=False)
+    user = relationship("User", backref=backref("matching_profile", uselist=False, cascade="all, delete-orphan"), uselist=False)
 
 
 class IndustryRelationshipType(str, enum.Enum):

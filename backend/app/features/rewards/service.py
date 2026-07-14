@@ -100,6 +100,7 @@ async def _serialize_partner(partner: Partner, user_id: UUID | None = None, db: 
         "description": partner.description,
         "website": partner.website,
         "is_active": partner.is_active,
+        "admin_id": str(partner.admin_id) if partner.admin_id else None,
         "offers": [await _serialize_offer(o, user_id, db) for o in getattr(partner, "offers", [])]
     }
 
@@ -191,7 +192,8 @@ async def create_partner(data: PartnerCreate, db: AsyncSession) -> Dict[str, Any
         logo_url=data.logo_url,
         description=data.description,
         website=data.website,
-        is_active=data.is_active
+        is_active=data.is_active,
+        admin_id=data.admin_id
     )
     db.add(partner)
     await db.flush()

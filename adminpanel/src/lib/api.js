@@ -199,6 +199,12 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(body),
   }),
+  deletePartner: (id) => apiFetch(`/rewards/partners/${id}`, {
+    method: 'DELETE',
+  }),
+  deleteOffer: (id) => apiFetch(`/rewards/offers/${id}`, {
+    method: 'DELETE',
+  }),
   // Notifications
   listNotifications: () => apiFetch('/notifications'),
   getUnreadCount: () => apiFetch('/notifications/unread-count'),

@@ -50,6 +50,7 @@ export const MENU_GROUPS = [
     label: 'Expansion',
     links: [
       { id: 'rewards', icon: IconBuildingStore, label: 'Rewards Hub' },
+      { id: 'partner-admins', icon: IconUserShield, label: 'Partner Admins' },
       { id: 'chapters', icon: IconBuildingCommunity, label: 'Global Chapters' },
       { id: 'clubs', icon: IconHierarchy2, label: 'Horizontal Clubs' },
     ],
