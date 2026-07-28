@@ -24,6 +24,7 @@ class PaymentType(str, enum.Enum):
     MEMBERSHIP = "membership"
     MEETING_FEE = "meeting_fee"
     RENEWAL = "renewal"
+    OTHER = "other"
 
 
 class PaymentStatus(str, enum.Enum):

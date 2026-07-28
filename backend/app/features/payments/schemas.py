@@ -90,3 +90,21 @@ class TestPaymentLinkCreate(BaseModel):
             raise ValueError("Amount must be positive")
         return v
 
+
+class PaymentLinkCreateAdmin(BaseModel):
+    user_id: Optional[UUID] = None
+    email: Optional[str] = None
+    full_name: Optional[str] = None
+    amount: Decimal
+    payment_type: PaymentType
+    reason: Optional[str] = None
+    send_email: Optional[bool] = True
+
+    @field_validator("amount")
+    @classmethod
+    def amount_must_be_positive(cls, v: Decimal) -> Decimal:
+        if v <= 0:
+            raise ValueError("Amount must be positive")
+        return v
+
+

@@ -118,6 +118,8 @@ async def list_users(
 
     if role_filter:
         stmt = stmt.where(User.role == role_filter)
+    else:
+        stmt = stmt.where(User.role != UserRole.GUEST)
     if is_active is not None:
         stmt = stmt.where(User.is_active == is_active)
     if chapter_id:

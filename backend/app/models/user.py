@@ -21,6 +21,7 @@ from app.models.base import Base, TimestampMixin
 class UserRole(str, enum.Enum):
     """Platform roles – ordered by escalating privileges."""
 
+    GUEST = "GUEST"
     PROSPECT = "PROSPECT"
     MEMBER = "MEMBER"
     PARTNER_ADMIN = "PARTNER_ADMIN"

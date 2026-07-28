@@ -57,6 +57,7 @@ import MemberDetailPage from './members/MemberDetailPage';
 import HomeSlidesPage from './home-content/HomeSlidesPage';
 import ComplementsPage from './complements/ComplementsPage';
 import PaymentProofsTab from './payments/PaymentProofsTab';
+import GeneratePaymentLinkTab from './payments/GeneratePaymentLinkTab';
 import VerificationRequestsPage from './verification/VerificationRequestsPage';
 
 
@@ -2415,6 +2416,7 @@ function PaymentsPage() {
       <div className="ds-tabs" style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-subtle)', display: 'flex', gap: '2rem' }}>
         <button className={`ds-tab ${activeTab === 'transactions' ? 'active' : ''}`} onClick={() => setActiveTab('transactions')} style={{ background: 'none', border: 'none', padding: '0.75rem 0', fontWeight: 600, color: activeTab === 'transactions' ? 'var(--brand-blue)' : 'var(--fg-muted)', borderBottom: activeTab === 'transactions' ? '2px solid var(--brand-blue)' : '2px solid transparent', cursor: 'pointer' }}>Transactions</button>
         <button className={`ds-tab ${activeTab === 'proofs' ? 'active' : ''}`} onClick={() => setActiveTab('proofs')} style={{ background: 'none', border: 'none', padding: '0.75rem 0', fontWeight: 600, color: activeTab === 'proofs' ? 'var(--brand-blue)' : 'var(--fg-muted)', borderBottom: activeTab === 'proofs' ? '2px solid var(--brand-blue)' : '2px solid transparent', cursor: 'pointer' }}>Payment Proofs</button>
+        <button className={`ds-tab ${activeTab === 'generate-link' ? 'active' : ''}`} onClick={() => setActiveTab('generate-link')} style={{ background: 'none', border: 'none', padding: '0.75rem 0', fontWeight: 600, color: activeTab === 'generate-link' ? 'var(--brand-blue)' : 'var(--fg-muted)', borderBottom: activeTab === 'generate-link' ? '2px solid var(--brand-blue)' : '2px solid transparent', cursor: 'pointer' }}>Generate Payment Link</button>
       </div>
 
       {activeTab === 'transactions' ? (
@@ -2519,8 +2521,10 @@ function PaymentsPage() {
         />
       )}
         </>
-      ) : (
+      ) : activeTab === 'proofs' ? (
         <PaymentProofsTab />
+      ) : (
+        <GeneratePaymentLinkTab users={users} />
       )}
     </section>
   );

@@ -19,7 +19,7 @@ from typing import Any, Dict, List
 from uuid import UUID
 
 from app.features.notifications.service import send_push_notification, notify_admins
-from app.features.payments.schemas import PaymentCreateAdmin, PaymentUpdateAdmin
+from app.features.payments.schemas import PaymentCreateAdmin, PaymentUpdateAdmin, PaymentLinkCreateAdmin
 
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -935,7 +935,7 @@ async def reject_payment_proof(proof_id: UUID, current_user: Any, notes: str | N
 
 async def generate_test_payment_link(data: TestPaymentLinkCreate, db: AsyncSession) -> Dict[str, Any]:
     from app.models.user import User, UserRole
-    from app.models.payments import Payment, PaymentStatus
+    from app.models.payments import Payment, PaymentStatus, PaymentType
     from app.models.payment_proofs import PaymentProof, PaymentProofStatus
     from datetime import datetime, timezone, timedelta
     import uuid
@@ -961,7 +961,7 @@ async def generate_test_payment_link(data: TestPaymentLinkCreate, db: AsyncSessi
             phone_number=phone,
             email=email,
             full_name=name,
-            role=UserRole.PROSPECT,
+            role=UserRole.GUEST if data.payment_type != PaymentType.MEMBERSHIP else UserRole.PROSPECT,
             is_active=True
         )
         db.add(user)
@@ -1030,3 +1030,213 @@ async def generate_test_payment_link(data: TestPaymentLinkCreate, db: AsyncSessi
         "payment_type": payment.payment_type.value,
         "reason": payment.reason
     }
+
+
+async def generate_admin_payment_link(
+    data: PaymentLinkCreateAdmin,
+    actor_id: UUID,
+    db: AsyncSession,
+) -> Dict[str, Any]:
+    from app.models.user import User, UserRole
+    from app.models.payments import Payment, PaymentStatus, PaymentType
+    from app.models.payment_proofs import PaymentProof, PaymentProofStatus
+    from app.models.audit_logs import AuditLog
+    from datetime import datetime, timezone, timedelta
+    import uuid
+    from sqlalchemy import select
+
+    user = None
+    target_email = data.email
+    target_name = data.full_name
+
+    # 1. If user_id is provided, fetch user
+    if data.user_id:
+        stmt = select(User).where(User.id == data.user_id)
+        res = await db.execute(stmt)
+        user = res.scalar_one_or_none()
+        if user:
+            if not target_email:
+                target_email = user.email
+            if not target_name:
+                target_name = user.full_name
+
+    # 2. If no user found yet, try lookup by email
+    if not user and target_email:
+        stmt = select(User).where(User.email == target_email)
+        res = await db.execute(stmt)
+        user = res.scalar_one_or_none()
+
+    # 3. If still no user, create a prospect user for this payment
+    if not user:
+        random_phone = f"+947{uuid.uuid4().hex[:8]}"
+        user = User(
+            phone_number=random_phone,
+            email=target_email,
+            full_name=target_name or "",
+            role=UserRole.GUEST if data.payment_type != PaymentType.MEMBERSHIP else UserRole.PROSPECT,
+            is_active=True
+        )
+        db.add(user)
+        await db.flush()
+
+    reason = data.reason or f"{data.payment_type.value.replace('_', ' ').capitalize()} Fee"
+
+    # 4. Create pending Payment
+    payment = Payment(
+        user_id=user.id,
+        amount=data.amount,
+        currency="LKR",
+        payment_type=data.payment_type,
+        reason=reason,
+        status=PaymentStatus.PENDING,
+        recorded_by_id=actor_id,
+    )
+    db.add(payment)
+    await db.flush()
+
+    # 5. Create PaymentProof token
+    proof = PaymentProof(
+        payment_id=payment.id,
+        user_id=user.id,
+        upload_token=uuid.uuid4().hex,
+        upload_token_expires_at=datetime.now(timezone.utc) + timedelta(days=14),
+        status=PaymentProofStatus.PENDING_REVIEW
+    )
+    db.add(proof)
+    await db.flush()
+
+    # Audit log
+    audit = AuditLog(
+        actor_id=actor_id,
+        entity_type="payment",
+        entity_id=payment.id,
+        action="admin_generate_payment_link",
+        new_value={
+            "amount": float(payment.amount),
+            "payment_type": payment.payment_type.value,
+            "reason": payment.reason,
+            "user_id": str(user.id),
+            "upload_token": proof.upload_token
+        },
+    )
+    db.add(audit)
+    await db.commit()
+
+    # 6. Generate checkout URL
+    settings = get_settings()
+    checkout_url = f"{settings.PUBLIC_SITE_URL.rstrip('/')}/checkout?token={proof.upload_token}"
+
+    email_sent = False
+    # 7. Optionally send email
+    if data.send_email and target_email:
+        try:
+            from app.core.email_service import send_email, render_template
+
+            type_labels = {
+                "membership": "Membership Fee",
+                "meeting_fee": "Meeting / Event Ticket Fee",
+                "renewal": "Annual Renewal Fee",
+            }
+            payment_type_label = type_labels.get(payment.payment_type.value, payment.payment_type.value.replace('_', ' ').capitalize())
+
+            html = render_template("payment_link.html", {
+                "full_name": target_name or user.full_name or "Member",
+                "payment_type_label": payment_type_label,
+                "reason": payment.reason,
+                "amount": f"{payment.amount:,.2f}",
+                "checkout_url": checkout_url
+            })
+            await send_email(target_email, f"PBN Payment Link: {payment_type_label}", html)
+            logger.info(f"Payment checkout link emailed to {target_email}")
+            email_sent = True
+        except Exception as e:
+            logger.error(f"Failed to email payment link to {target_email}: {e}")
+
+    return {
+        "payment_id": str(payment.id),
+        "user_id": str(user.id),
+        "upload_token": proof.upload_token,
+        "checkout_url": checkout_url,
+        "amount": str(payment.amount),
+        "payment_type": payment.payment_type.value,
+        "reason": payment.reason,
+        "recipient_name": target_name or user.full_name,
+        "recipient_email": target_email or user.email,
+        "email_sent": email_sent
+    }
+
+
+async def list_generated_links(db: AsyncSession) -> List[Dict[str, Any]]:
+    from app.models.user import User
+    from app.models.payments import PaymentStatus
+    from app.core.config import get_settings
+    from datetime import datetime, timezone
+
+    stmt = (
+        select(PaymentProof, Payment, User)
+        .join(Payment, Payment.id == PaymentProof.payment_id)
+        .join(User, User.id == PaymentProof.user_id)
+        .where(PaymentProof.upload_token.is_not(None))
+        .order_by(desc(PaymentProof.created_at))
+    )
+    res = await db.execute(stmt)
+    results = []
+    for proof, payment, user in res.all():
+        is_expired = proof.upload_token_expires_at < datetime.now(timezone.utc)
+        status_label = "completed" if payment.status == PaymentStatus.COMPLETED else ("expired" if is_expired else "pending")
+        
+        checkout_url = f"{get_settings().PUBLIC_SITE_URL.rstrip('/')}/checkout?token={proof.upload_token}"
+        
+        results.append({
+            "proof_id": str(proof.id),
+            "payment_id": str(payment.id),
+            "user_id": str(user.id),
+            "recipient_name": user.full_name,
+            "recipient_email": user.email,
+            "payment_reason": payment.reason,
+            "payment_amount": str(payment.amount),
+            "payment_type": payment.payment_type.value,
+            "payment_status": payment.status.value,
+            "upload_token": proof.upload_token,
+            "expires_at": proof.upload_token_expires_at.isoformat(),
+            "created_at": proof.created_at.isoformat(),
+            "checkout_url": checkout_url,
+            "status": status_label
+        })
+    return results
+
+
+async def revoke_payment_link(proof_id: UUID, db: AsyncSession) -> Dict[str, Any]:
+    from app.core.exceptions import NotFoundException
+    from datetime import datetime, timezone, timedelta
+
+    stmt = select(PaymentProof).where(PaymentProof.id == proof_id)
+    res = await db.execute(stmt)
+    proof = res.scalar_one_or_none()
+    if not proof:
+        raise NotFoundException("Payment link not found.")
+    proof.upload_token_expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+    db.add(proof)
+    await db.commit()
+    return {"message": "Payment link revoked successfully."}
+
+
+async def extend_payment_link(proof_id: UUID, days: int, db: AsyncSession) -> Dict[str, Any]:
+    from app.core.exceptions import NotFoundException
+    from datetime import datetime, timezone, timedelta
+
+    stmt = select(PaymentProof).where(PaymentProof.id == proof_id)
+    res = await db.execute(stmt)
+    proof = res.scalar_one_or_none()
+    if not proof:
+        raise NotFoundException("Payment link not found.")
+    base_time = max(proof.upload_token_expires_at, datetime.now(timezone.utc))
+    proof.upload_token_expires_at = base_time + timedelta(days=days)
+    db.add(proof)
+    await db.commit()
+    return {
+        "message": "Payment link extended successfully.",
+        "expires_at": proof.upload_token_expires_at.isoformat()
+    }
+
+

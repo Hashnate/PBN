@@ -17,7 +17,8 @@ from app.core.response import success_response, error_response
 from app.features.auth.dependencies import get_current_user, require_role
 from app.features.payments.schemas import (
     PaymentInitiate, SimulateWebhook, PaymentCreateAdmin, PaymentUpdateAdmin,
-    PaymentProofUpload, PaymentProofReview, PaymentProofResponse, TestPaymentLinkCreate
+    PaymentProofUpload, PaymentProofReview, PaymentProofResponse, TestPaymentLinkCreate,
+    PaymentLinkCreateAdmin
 )
 from app.features.payments import service
 from app.models.payment_proofs import PaymentProofStatus
@@ -237,6 +238,47 @@ async def admin_reject_payment_proof_endpoint(
     return success_response(data=result)
 
 
+@router.post("/admin/payments/generate-link", summary="Admin: Generate payment link", status_code=201)
+async def admin_generate_payment_link_endpoint(
+    data: PaymentLinkCreateAdmin,
+    current_user: User = Depends(require_role([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.CHAPTER_ADMIN])),
+    db: AsyncSession = Depends(get_db),
+) -> ORJSONResponse:
+    result = await service.generate_admin_payment_link(data, current_user.id, db)
+    return success_response(data=result, message="Payment link generated successfully", status_code=201)
+
+
+@router.get("/admin/payments/generated-links", summary="Admin: list all generated payment links")
+async def admin_list_generated_links_endpoint(
+    current_user: User = Depends(require_role([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.CHAPTER_ADMIN])),
+    db: AsyncSession = Depends(get_db),
+) -> ORJSONResponse:
+    links = await service.list_generated_links(db)
+    return success_response(data=links)
+
+
+@router.post("/admin/payments/generated-links/{proof_id}/revoke", summary="Admin: revoke a generated payment link")
+async def admin_revoke_payment_link_endpoint(
+    proof_id: UUID,
+    current_user: User = Depends(require_role([UserRole.SUPER_ADMIN, UserRole.ADMIN])),
+    db: AsyncSession = Depends(get_db),
+) -> ORJSONResponse:
+    result = await service.revoke_payment_link(proof_id, db)
+    return success_response(data=result, message="Payment link revoked successfully")
+
+
+@router.post("/admin/payments/generated-links/{proof_id}/extend", summary="Admin: extend a generated payment link")
+async def admin_extend_payment_link_endpoint(
+    proof_id: UUID,
+    days: int = Query(7, ge=1, le=90),
+    current_user: User = Depends(require_role([UserRole.SUPER_ADMIN, UserRole.ADMIN])),
+    db: AsyncSession = Depends(get_db),
+) -> ORJSONResponse:
+    result = await service.extend_payment_link(proof_id, days, db)
+    return success_response(data=result, message="Payment link extended successfully")
+
+
+
 @router.post("/payments/generate-link", summary="Generate a payment link (non-production only)")
 async def generate_test_payment_link_endpoint(
     data: TestPaymentLinkCreate,
@@ -251,3 +293,4 @@ async def generate_test_payment_link_endpoint(
         )
     result = await service.generate_test_payment_link(data, db)
     return success_response(data=result, message="Payment link generated successfully")
+

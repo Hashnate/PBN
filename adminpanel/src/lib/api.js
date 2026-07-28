@@ -70,6 +70,17 @@ export const api = {
     method: 'PATCH',
     body: JSON.stringify(body),
   }),
+  generatePaymentLink: (body) => apiFetch('/admin/payments/generate-link', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  }),
+  listGeneratedLinks: () => apiFetch('/admin/payments/generated-links'),
+  revokeGeneratedLink: (proofId) => apiFetch(`/admin/payments/generated-links/${proofId}/revoke`, {
+    method: 'POST',
+  }),
+  extendGeneratedLink: (proofId, days = 7) => apiFetch(`/admin/payments/generated-links/${proofId}/extend?days=${days}`, {
+    method: 'POST',
+  }),
   exportData: () => apiFetch('/admin/export'),
 
   // Applications
