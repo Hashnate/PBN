@@ -37,8 +37,8 @@ class PaymentStatus(str, enum.Enum):
 class Payment(Base, TimestampMixin):
     __tablename__ = "payments"
 
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     amount: Mapped[Decimal] = mapped_column(
         Numeric(precision=12, scale=2), nullable=False
@@ -51,6 +51,9 @@ class Payment(Base, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     reference_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     gateway_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # For non-member payment links (no user account exists)
+    recipient_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    recipient_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     recorded_by_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
@@ -62,7 +65,7 @@ class Payment(Base, TimestampMixin):
     gateway_response: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Relationships
-    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+    user: Mapped["User | None"] = relationship("User", foreign_keys=[user_id])
     recorded_by: Mapped["User | None"] = relationship("User", foreign_keys=[recorded_by_id])
     proofs: Mapped[list["PaymentProof"]] = relationship("PaymentProof", back_populates="payment", cascade="all, delete-orphan")
 

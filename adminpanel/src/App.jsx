@@ -45,6 +45,7 @@ import {
   IconArrowBackUp,
   IconPointFilled,
   IconMessages,
+  IconAward,
 } from '@tabler/icons-react';
 import { api, STATIC_BASE_URL } from './lib/api';
 import { useApi } from './hooks/useApi';
@@ -377,6 +378,10 @@ function ApplicationDetailModal({ appId, onClose, onStatusUpdated }) {
   };
 
   const handleDelete = async () => {
+    if (detail?.status !== 'pending') {
+      setErrorMessage('Only pending applications can be deleted.');
+      return;
+    }
     if (!window.confirm('Are you absolutely sure you want to permanently delete this application? This cannot be undone.')) return;
     
     setUpdating(true);
@@ -462,15 +467,17 @@ function ApplicationDetailModal({ appId, onClose, onStatusUpdated }) {
                 </Ds.Button>
               </>
             )}
-            <button 
-              type="button" 
-              className="view-detail-btn" 
-              style={{ color: '#ef4444', borderColor: 'transparent', background: '#fef2f2' }} 
-              onClick={handleDelete}
-              title="Delete Application"
-            >
-              <IconTrash size={20} />
-            </button>
+            {detail?.status === 'pending' && (
+              <button 
+                type="button" 
+                className="view-detail-btn" 
+                style={{ color: '#ef4444', borderColor: 'transparent', background: '#fef2f2' }} 
+                onClick={handleDelete}
+                title="Delete Application"
+              >
+                <IconTrash size={20} />
+              </button>
+            )}
             <button type="button" className="modal-close-btn" onClick={onClose} title="Close">
               <IconX size={20} />
             </button>
@@ -488,13 +495,18 @@ function ApplicationDetailModal({ appId, onClose, onStatusUpdated }) {
           )}
 
           {/* Status Banner */}
-          <div className="app-status-banner" style={{ background: getStatusConfig(detail.status).bg, borderLeft: `4px solid ${getStatusConfig(detail.status).color}` }}>
+          <div className="app-status-banner" style={{ background: getStatusConfig(detail.status).bg, borderLeft: `4px solid ${getStatusConfig(detail.status).color}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <StatusPill status={detail.status} />
               <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                 Applied {new Date(detail.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
               </span>
             </div>
+            {detail.application_type === 'founders_club' && (
+              <span style={{ background: 'linear-gradient(135deg, #d4af37, #b8860b)', color: '#fff', fontSize: '0.75rem', fontWeight: 800, padding: '4px 10px', borderRadius: '12px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                Founders Club (Company)
+              </span>
+            )}
           </div>
 
           {/* Info Grid */}
@@ -547,15 +559,19 @@ function ApplicationDetailModal({ appId, onClose, onStatusUpdated }) {
             </div>
           ) : (
             <div className="detail-grid">
-              <div className="detail-item"><label>Full Name</label><p>{detail.full_name}</p></div>
-              <div className="detail-item"><label>Business Name</label><p>{detail.business_name}</p></div>
+              <div className="detail-item"><label>Full Name (Representative)</label><p>{detail.full_name}</p></div>
+              <div className="detail-item"><label>Company / Business Name</label><p>{detail.business_name}</p></div>
               <div className="detail-item"><label>Contact Number</label><p>{detail.contact_number}</p></div>
               <div className="detail-item"><label>Email</label><p>{detail.email || '—'}</p></div>
               <div className="detail-item"><label>District</label><p>{detail.district || '—'}</p></div>
-              <div className="detail-item"><label>Industry</label><p>{detail.industry_name || '—'}</p></div>
+              <div className="detail-item"><label>Industry</label><p>{detail.industry_name || detail.custom_industry || '—'}</p></div>
               <div className="detail-item">
-                <label>Targetted Chapter</label>
-                <p style={{ fontWeight: 600 }}>{detail.chapter_name || 'No Chapter Assigned'} {detail.district ? `(${detail.district})` : ''}</p>
+                <label>Targeted Chapter</label>
+                <p style={{ fontWeight: 600 }}>
+                  {detail.application_type === 'founders_club'
+                    ? (detail.chapter_name && detail.chapter_name !== '—' ? `${detail.chapter_name} (Founders)` : 'Founders Club (No Chapter Lock)')
+                    : (detail.chapter_name || 'No Chapter Assigned') + (detail.district ? ` (${detail.district})` : '')}
+                </p>
               </div>
               <div className="detail-item">
                 <label>Fit Call Date</label>
@@ -567,10 +583,10 @@ function ApplicationDetailModal({ appId, onClose, onStatusUpdated }) {
           {/* Founding-member profile (Tier-1 fields) */}
           {(detail.designation || detail.decision_authority || detail.years_in_operation || detail.business_legal_type || detail.business_registration_number || detail.website_url || detail.linkedin_url || detail.what_you_offer || detail.what_you_seek || detail.tshirt_size) && (
             <div style={{ marginTop: '2rem' }}>
-              <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.75rem' }}>Founding-member profile</h4>
+              <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.75rem' }}>{detail.application_type === 'founders_club' ? 'Executive & Company Profile' : 'Founding-member profile'}</h4>
               <div className="detail-grid">
                 {detail.designation && (
-                  <div className="detail-item"><label>Designation</label><p>{detail.designation}</p></div>
+                  <div className="detail-item"><label>Position / Designation</label><p>{detail.designation}</p></div>
                 )}
                 {detail.decision_authority && (
                   <div className="detail-item"><label>Decision authority</label><p style={{ textTransform: 'capitalize' }}>{detail.decision_authority.replace(/_/g, ' ')}</p></div>
@@ -596,7 +612,7 @@ function ApplicationDetailModal({ appId, onClose, onStatusUpdated }) {
               </div>
               {detail.what_you_offer && (
                 <div style={{ marginTop: '1rem' }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>What they offer</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{detail.application_type === 'founders_club' ? 'About company & networking goals' : 'What they offer'}</label>
                   <p style={{ marginTop: '0.5rem', fontSize: '0.9375rem', color: 'var(--text-primary)', background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '12px', lineHeight: 1.6 }}>{detail.what_you_offer}</p>
                 </div>
               )}
@@ -645,10 +661,12 @@ function ApplicationDetailModal({ appId, onClose, onStatusUpdated }) {
             {modalStatus === 'approved' ? (
               <div className="approval-form" style={{ background: '#f0fdf4', padding: '1.5rem', borderRadius: '16px', border: '1px solid #bbf7d0', marginBottom: '1.5rem' }}>
                 <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#166534', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <IconCheck size={18} /> Approve Application
+                  <IconCheck size={18} /> Approve {detail.application_type === 'founders_club' ? 'Founders Club' : ''} Application
                 </h4>
                 <p style={{ fontSize: '0.85rem', color: '#166534', marginBottom: '1.25rem' }}>
-                  Select the chapter and confirming the initial payment status if previously received. The applicant receives a welcome email with login credentials and an onboarding link.
+                  {detail.application_type === 'founders_club'
+                    ? 'Confirming approval will provision a Founders Club membership (LKR 50,000 / year). The applicant will receive a welcome email with credentials and onboarding instructions.'
+                    : 'Select the chapter and confirm initial payment status. The applicant receives a welcome email with login credentials and an onboarding link.'}
                 </p>
                 {!detail.email && (
                   <div style={{ marginBottom: '1.25rem' }}>
@@ -669,9 +687,9 @@ function ApplicationDetailModal({ appId, onClose, onStatusUpdated }) {
                 )}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
                   <div>
-                    <label style={{ color: '#166534', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>Target Chapter</label>
-                    <div style={{ background: 'white', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid #bbf7d0', fontSize: '0.9375rem', fontWeight: 600, color: '#166534', height: '52px', display: 'flex', alignItems: 'center' }}>
-                      {detail.chapter_name || 'Not assigned'}
+                    <label style={{ color: '#166534', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>Membership Fee</label>
+                    <div style={{ background: 'white', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid #bbf7d0', fontSize: '0.9375rem', fontWeight: 700, color: '#166534', height: '52px', display: 'flex', alignItems: 'center' }}>
+                      {detail.application_type === 'founders_club' ? 'LKR 50,000 / year (Founders Tier)' : 'LKR 15,000 / year (Standard Tier)'}
                     </div>
                   </div>
                   <div>
@@ -693,7 +711,7 @@ function ApplicationDetailModal({ appId, onClose, onStatusUpdated }) {
                     className="login-btn"
                     style={{ flex: 1, background: '#10b981', padding: '0.75rem', height: '52px' }}
                     onClick={() => handleStatusUpdate('approved')}
-                    disabled={updating || !selectedChapterId}
+                    disabled={updating}
                   >
                     Confirm & Approve
                   </button>
@@ -795,12 +813,15 @@ const SRI_LANKA_DISTRICTS = [
 
 function CreateApplicationModal({ onClose, onCreated }) {
   const [formData, setFormData] = useState({
+    application_type: 'standard',
     full_name: '',
+    designation: '',
     business_name: '',
     contact_number: '',
     email: '',
     district: '',
     industry_category_id: '',
+    custom_industry: '',
     chapter_id: ''
   });
   const [industries, setIndustries] = useState([]);
@@ -853,22 +874,34 @@ function CreateApplicationModal({ onClose, onCreated }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.district) {
-      setError('Please select a district');
-      return;
+    if (formData.application_type === 'standard') {
+      if (!formData.district) {
+        setError('Please select a district');
+        return;
+      }
+      if (!formData.chapter_id) {
+        setError('Please select a target chapter');
+        return;
+      }
+      if (!formData.industry_category_id) {
+        setError('Please select an industry category');
+        return;
+      }
+    } else {
+      if (!formData.custom_industry && !formData.industry_category_id) {
+        setError('Please specify the company industry');
+        return;
+      }
     }
-    if (!formData.chapter_id) {
-      setError('Please select a target chapter');
-      return;
-    }
-    if (!formData.industry_category_id) {
-      setError('Please select an industry category');
-      return;
-    }
+
     setLoading(true);
     setError('');
     try {
-      await api.createApplication(formData);
+      const payload = { ...formData };
+      if (!payload.chapter_id) delete payload.chapter_id;
+      if (!payload.industry_category_id) delete payload.industry_category_id;
+      if (!payload.custom_industry) delete payload.custom_industry;
+      await api.createApplication(payload);
       onCreated();
     } catch (err) {
       setError(err.message || 'Failed to create application');
@@ -877,9 +910,11 @@ function CreateApplicationModal({ onClose, onCreated }) {
     }
   };
 
+  const isFounders = formData.application_type === 'founders_club';
+
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 550 }}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 580 }}>
         <div className="modal-header">
           <div>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>New Application</h2>
@@ -890,12 +925,25 @@ function CreateApplicationModal({ onClose, onCreated }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ padding: '1.5rem 1.5rem 10rem' }}>
+        <form onSubmit={handleSubmit} style={{ padding: '1.5rem 1.5rem 8rem' }}>
           {error && <div className="login-error" style={{ marginBottom: '1.25rem' }}>{error}</div>}
+
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Application Type *</label>
+            <CustomSelect
+              label="Select Type..."
+              value={formData.application_type}
+              options={[
+                { id: 'standard', name: 'Standard Chapter Seat Application (LKR 15,000)' },
+                { id: 'founders_club', name: 'Founders Club Company Application (LKR 50,000)' }
+              ]}
+              onChange={val => setFormData({ ...formData, application_type: val })}
+            />
+          </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
             <div className="login-field" style={{ marginBottom: 0 }}>
-              <label>Applicant Name *</label>
+              <label>{isFounders ? 'Representative Name *' : 'Applicant Name *'}</label>
               <input
                 type="text"
                 className="filter-input v2"
@@ -906,11 +954,11 @@ function CreateApplicationModal({ onClose, onCreated }) {
               />
             </div>
             <div className="login-field" style={{ marginBottom: 0 }}>
-              <label>Business Name *</label>
+              <label>{isFounders ? 'Company / Business Name *' : 'Business Name *'}</label>
               <input
                 type="text"
                 className="filter-input v2"
-                placeholder="Trade Name"
+                placeholder="Trade / Company Name"
                 required
                 value={formData.business_name}
                 onChange={e => setFormData({ ...formData, business_name: e.target.value })}
@@ -943,8 +991,35 @@ function CreateApplicationModal({ onClose, onCreated }) {
             </div>
           </div>
 
+          {isFounders && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+              <div className="login-field" style={{ marginBottom: 0 }}>
+                <label>Position / Designation *</label>
+                <input
+                  type="text"
+                  className="filter-input v2"
+                  placeholder="Founder, CEO, MD..."
+                  required={isFounders}
+                  value={formData.designation}
+                  onChange={e => setFormData({ ...formData, designation: e.target.value })}
+                />
+              </div>
+              <div className="login-field" style={{ marginBottom: 0 }}>
+                <label>Company Industry *</label>
+                <input
+                  type="text"
+                  className="filter-input v2"
+                  placeholder="Eg: Tech, Real Estate, Manufacturing..."
+                  required={isFounders}
+                  value={formData.custom_industry}
+                  onChange={e => setFormData({ ...formData, custom_industry: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+
           <div style={{ marginBottom: '1.25rem' }}>
-            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>District *</label>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>District {!isFounders && '*'}</label>
             <CustomSelect
               label="Select District..."
               value={formData.district}
@@ -953,28 +1028,30 @@ function CreateApplicationModal({ onClose, onCreated }) {
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Target Chapter *</label>
-              <CustomSelect
-                label={!formData.district ? "Select District first" : (loadingInitial ? "Loading..." : "Select Chapter...")}
-                value={formData.chapter_id}
-                options={filteredChapters}
-                onChange={val => setFormData({ ...formData, chapter_id: val, industry_category_id: '' })}
-              />
+          {!isFounders && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Target Chapter *</label>
+                <CustomSelect
+                  label={!formData.district ? "Select District first" : (loadingInitial ? "Loading..." : "Select Chapter...")}
+                  value={formData.chapter_id}
+                  options={filteredChapters}
+                  onChange={val => setFormData({ ...formData, chapter_id: val, industry_category_id: '' })}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Industry *</label>
+                <CustomSelect
+                  label={loadingInitial ? "Loading..." : (loadingOccupancy ? "Checking..." : "Select Industry...")}
+                  value={formData.industry_category_id}
+                  options={industries}
+                  disabledOptions={occupiedIndustries}
+                  onChange={val => setFormData({ ...formData, industry_category_id: val })}
+                />
+                {!formData.chapter_id && <p style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '0.4rem' }}>Please select a chapter first</p>}
+              </div>
             </div>
-            <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Industry *</label>
-              <CustomSelect
-                label={loadingInitial ? "Loading..." : (loadingOccupancy ? "Checking..." : "Select Industry...")}
-                value={formData.industry_category_id}
-                options={industries}
-                disabledOptions={occupiedIndustries}
-                onChange={val => setFormData({ ...formData, industry_category_id: val })}
-              />
-              {!formData.chapter_id && <p style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '0.4rem' }}>Please select a chapter first</p>}
-            </div>
-          </div>
+          )}
 
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
             <button
@@ -1037,6 +1114,7 @@ function ApplicationsPage() {
   const [pages, setPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
   const [page, setPage] = useState(1);
   const [selectedAppId, setSelectedAppId] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -1046,6 +1124,7 @@ function ApplicationsPage() {
     try {
       const params = { page, limit: 15 };
       if (statusFilter) params.status = statusFilter;
+      if (typeFilter) params.application_type = typeFilter;
       const result = await api.listApplications(params);
       setApps(result.data || []);
       setTotal(result.total || 0);
@@ -1056,18 +1135,26 @@ function ApplicationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, page]);
+  }, [statusFilter, typeFilter, page]);
 
   useEffect(() => { fetchApps(); }, [fetchApps]);
 
   const statusFilters = [
-    { value: '', label: 'All' },
+    { value: '', label: 'All Statuses' },
     { value: 'pending', label: 'Pending' },
     { value: 'fit_call_scheduled', label: 'Fit Call' },
     { value: 'approved', label: 'Approved' },
     { value: 'rejected', label: 'Rejected' },
     { value: 'waitlisted', label: 'Waitlisted' },
   ];
+
+  const typeFilters = [
+    { value: '', label: 'All Types' },
+    { value: 'standard', label: 'Standard Chapter' },
+    { value: 'founders_club', label: 'Founders Club' },
+  ];
+
+  const foundersCount = useMemo(() => apps.filter(a => a.application_type === 'founders_club').length, [apps]);
 
   return (
     <section className="ds-page">
@@ -1096,14 +1183,21 @@ function ApplicationsPage() {
 
       <div className="ds-stat-grid">
         <Ds.StatCard
-          label="Total"
+          label="Total Applications"
           value={total}
           icon={IconClipboardList}
           iconColor="var(--brand-blue)"
           iconBg="var(--brand-blue-50)"
         />
         <Ds.StatCard
-          label="Pending review"
+          label="Founders Club Applications"
+          value={foundersCount}
+          icon={IconAward}
+          iconColor="#d4af37"
+          iconBg="rgba(212, 175, 55, 0.1)"
+        />
+        <Ds.StatCard
+          label="Pending Review"
           value={apps.filter(a => a.status === 'pending').length}
           icon={IconClock}
           iconColor="var(--warning)"
@@ -1116,13 +1210,6 @@ function ApplicationsPage() {
           iconColor="var(--success)"
           iconBg="var(--success-bg)"
         />
-        <Ds.StatCard
-          label="Rejected"
-          value={apps.filter(a => a.status === 'rejected').length}
-          icon={IconX}
-          iconColor="var(--danger)"
-          iconBg="var(--danger-bg)"
-        />
       </div>
 
       <Ds.Section
@@ -1130,20 +1217,27 @@ function ApplicationsPage() {
         subtitle="Click any row to view details and take action."
         flush
         actions={
-          <Ds.ChipGroup
-            value={statusFilter}
-            onChange={val => { setStatusFilter(val); setPage(1); }}
-            options={statusFilters.map(f => ({ value: f.value, label: f.label }))}
-          />
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <Ds.ChipGroup
+              value={typeFilter}
+              onChange={val => { setTypeFilter(val); setPage(1); }}
+              options={typeFilters.map(f => ({ value: f.value, label: f.label }))}
+            />
+            <Ds.ChipGroup
+              value={statusFilter}
+              onChange={val => { setStatusFilter(val); setPage(1); }}
+              options={statusFilters.map(f => ({ value: f.value, label: f.label }))}
+            />
+          </div>
         }
       >
         <Ds.Table>
           <thead>
             <tr>
               <th>Applicant</th>
-              <th>Business</th>
-              <th>Contact</th>
-              <th>Target chapter</th>
+              <th>Business / Company</th>
+              <th>Type</th>
+              <th>Target Chapter</th>
               <th>Status</th>
               <th>Applied</th>
               <th className="ds-table__actions" />
@@ -1157,19 +1251,39 @@ function ApplicationsPage() {
                 colSpan={7}
                 icon={IconClipboardList}
                 title="No applications found"
-                description="Try changing the status filter above."
+                description="Try changing the status or type filter above."
               />
             ) : apps.map((app, idx) => (
               <tr key={app.id || idx} className="is-clickable" onClick={() => setSelectedAppId(app.id)}>
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                     <Ds.Avatar size="sm" name={app.full_name || '?'} />
-                    <span className="ds-table__primary">{app.full_name}</span>
+                    <div>
+                      <div className="ds-table__primary">{app.full_name}</div>
+                      {app.designation && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{app.designation}</div>}
+                    </div>
                   </div>
                 </td>
-                <td className="ds-table__primary">{app.business_name}</td>
-                <td className="ds-table__muted">{app.contact_number}</td>
-                <td className="ds-table__muted">{app.chapter_name || '—'}</td>
+                <td>
+                  <div className="ds-table__primary">{app.business_name}</div>
+                  {app.custom_industry && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{app.custom_industry}</div>}
+                </td>
+                <td>
+                  {app.application_type === 'founders_club' ? (
+                    <span style={{ background: 'linear-gradient(135deg, #d4af37, #b8860b)', color: '#fff', fontSize: '0.7rem', fontWeight: 800, padding: '3px 8px', borderRadius: '12px', letterSpacing: '0.03em', textTransform: 'uppercase', whiteSpace: 'nowrap', display: 'inline-block' }}>
+                      Founders Club
+                    </span>
+                  ) : (
+                    <span style={{ background: '#e2e8f0', color: '#475569', fontSize: '0.7rem', fontWeight: 700, padding: '3px 8px', borderRadius: '12px', textTransform: 'uppercase' }}>
+                      Standard
+                    </span>
+                  )}
+                </td>
+                <td className="ds-table__muted">
+                  {app.application_type === 'founders_club'
+                    ? (app.chapter_name && app.chapter_name !== '—' ? `${app.chapter_name} (Founders)` : 'Founders Club (All Chapters)')
+                    : (app.chapter_name || '—')}
+                </td>
                 <td><StatusPill status={app.status} /></td>
                 <td className="ds-table__muted">
                   {new Date(app.created_at).toLocaleDateString()}

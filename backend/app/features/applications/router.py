@@ -124,23 +124,27 @@ async def get_my_applications_endpoint(
 async def list_applications_endpoint(
     status: Optional[ApplicationStatus] = Query(None),
     industry_category_id: Optional[UUID] = Query(None),
+    application_type: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ) -> ORJSONResponse:
-    apps, total = await list_applications(status, industry_category_id, page, limit, db)
+    apps, total = await list_applications(status, industry_category_id, page, limit, db, application_type=application_type)
     
     data = [
         {
             "id": str(app["id"]),
+            "application_type": app.get("application_type", "standard"),
             "full_name": app["full_name"],
             "business_name": app["business_name"],
             "contact_number": app["contact_number"],
             "email": app["email"],
             "district": app["district"],
-            "industry_category_id": str(app["industry_category_id"]),
-            "chapter_id": str(app["chapter_id"]),
+            "industry_category_id": str(app["industry_category_id"]) if app.get("industry_category_id") else None,
+            "custom_industry": app.get("custom_industry"),
+            "chapter_id": str(app["chapter_id"]) if app.get("chapter_id") else None,
             "chapter_name": app["chapter_name"],
+            "designation": app.get("designation"),
             "status": app["status"].value,
             "fit_call_date": app["fit_call_date"].isoformat() if app["fit_call_date"] else None,
             "notes": app["notes"],
@@ -179,25 +183,31 @@ async def get_application_detail_endpoint(
     app = await get_application_by_id(app_id, db)
     history = await get_application_history(app.id, db)
     
-    # Get chapter name
-    chap_stmt = select(Chapter.name).where(Chapter.id == app.chapter_id)
-    chapter_name = (await db.execute(chap_stmt)).scalar() or "Unknown"
+    # Get chapter name if assigned
+    chapter_name = "—"
+    if app.chapter_id:
+        chap_stmt = select(Chapter.name).where(Chapter.id == app.chapter_id)
+        chapter_name = (await db.execute(chap_stmt)).scalar() or "—"
 
     # Get industry name
-    ind_stmt = select(IndustryCategory.name).where(IndustryCategory.id == app.industry_category_id)
-    industry_name = (await db.execute(ind_stmt)).scalar() or "Unknown"
+    industry_name = app.custom_industry or "—"
+    if app.industry_category_id:
+        ind_stmt = select(IndustryCategory.name).where(IndustryCategory.id == app.industry_category_id)
+        industry_name = (await db.execute(ind_stmt)).scalar() or app.custom_industry or "—"
     
     return success_response(
         data={
             "id": str(app.id),
+            "application_type": app.application_type,
             "full_name": app.full_name,
             "business_name": app.business_name,
             "contact_number": app.contact_number,
             "email": app.email,
             "district": app.district,
-            "industry_category_id": str(app.industry_category_id),
+            "industry_category_id": str(app.industry_category_id) if app.industry_category_id else None,
+            "custom_industry": app.custom_industry,
             "industry_name": industry_name,
-            "chapter_id": str(app.chapter_id),
+            "chapter_id": str(app.chapter_id) if app.chapter_id else None,
             "chapter_name": chapter_name,
             "status": app.status.value,
             "fit_call_date": app.fit_call_date.isoformat() if app.fit_call_date else None,

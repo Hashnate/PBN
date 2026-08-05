@@ -44,13 +44,15 @@ class IndustryCategoryResponse(BaseModel):
 # ── Application Schemas ──────────────────────────────────────────────────────
 
 class ApplicationCreate(BaseModel):
+    application_type: Optional[str] = "standard"
     full_name: str
     business_name: str
     contact_number: str
     email: str
     district: Optional[str] = None
-    industry_category_id: UUID
-    chapter_id: UUID
+    industry_category_id: Optional[UUID] = None
+    custom_industry: Optional[str] = None
+    chapter_id: Optional[UUID] = None
 
     # Tier-1 profile fields — all optional on the backend so legacy clients still pass.
     # The public site enforces required-ness (BR remains optional everywhere).
@@ -73,13 +75,15 @@ class ApplicationCreate(BaseModel):
 
 class ApplicationResponse(BaseModel):
     id: UUID
+    application_type: str = "standard"
     full_name: str
     business_name: str
     contact_number: str
     email: Optional[str] = None
     district: Optional[str] = None
-    industry_category_id: UUID
-    chapter_id: UUID
+    industry_category_id: Optional[UUID] = None
+    custom_industry: Optional[str] = None
+    chapter_id: Optional[UUID] = None
     status: ApplicationStatus
     fit_call_date: Optional[datetime] = None
     notes: Optional[str] = None
@@ -125,12 +129,14 @@ class ApplicationStatusUpdate(BaseModel):
 
 
 class ApplicationAdminUpdate(BaseModel):
+    application_type: Optional[str] = None
     full_name: Optional[str] = None
     business_name: Optional[str] = None
     contact_number: Optional[str] = None
     email: Optional[str] = None
     district: Optional[str] = None
     industry_category_id: Optional[UUID] = None
+    custom_industry: Optional[str] = None
     chapter_id: Optional[UUID] = None
     designation: Optional[str] = None
     decision_authority: Optional[str] = None

@@ -50,14 +50,16 @@ class TshirtSize(str, enum.Enum):
 class Application(Base, TimestampMixin):
     __tablename__ = "applications"
 
+    application_type: Mapped[str] = mapped_column(String(30), default="standard", nullable=False)
     full_name: Mapped[str] = mapped_column(String(150), nullable=False)
     business_name: Mapped[str] = mapped_column(String(255), nullable=False)
     contact_number: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     district: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    industry_category_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("industry_categories.id"), nullable=False
+    industry_category_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("industry_categories.id"), nullable=True
     )
+    custom_industry: Mapped[str | None] = mapped_column(String(150), nullable=True)
     chapter_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("chapters.id", ondelete="SET NULL"), nullable=True
     )

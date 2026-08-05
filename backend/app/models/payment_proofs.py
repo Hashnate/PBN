@@ -36,8 +36,8 @@ class PaymentProof(Base, TimestampMixin):
     payment_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("payments.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     proof_type: Mapped[PaymentProofType | None] = mapped_column(
         Enum(PaymentProofType, name="payment_proof_type", create_type=True), nullable=True
@@ -62,5 +62,5 @@ class PaymentProof(Base, TimestampMixin):
 
     # Relationships
     payment: Mapped["Payment"] = relationship("Payment", back_populates="proofs")
-    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+    user: Mapped["User | None"] = relationship("User", foreign_keys=[user_id])
     reviewed_by: Mapped["User | None"] = relationship("User", foreign_keys=[reviewed_by_id])

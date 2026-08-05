@@ -28,6 +28,7 @@ export const MAIN_MENU = [
       { title: 'Directory', path: '/members', icon: IconUsers },
       { title: 'Chapters', path: '/chapters', icon: IconBuildingCommunity },
       { title: 'Clubs', path: '/clubs', icon: IconBuildingSkyscraper },
+      { title: 'Expert Forum', path: '/expert-forum', icon: IconAward },
       { title: 'Community', path: '/community', icon: IconMessages },
       { title: 'Events', path: '/events', icon: IconCalendarEvent },
     ]

@@ -21,7 +21,7 @@ from uuid import UUID
 from app.features.notifications.service import send_push_notification, notify_admins
 from app.features.payments.schemas import PaymentCreateAdmin, PaymentUpdateAdmin, PaymentLinkCreateAdmin
 
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -1062,28 +1062,21 @@ async def generate_admin_payment_link(
 
     # 2. If no user found yet, try lookup by email
     if not user and target_email:
-        stmt = select(User).where(User.email == target_email)
+        stmt = select(User).where(func.lower(User.email) == target_email.lower())
         res = await db.execute(stmt)
         user = res.scalar_one_or_none()
+        # Only use the found user if they are a real member (not a GUEST shell)
+        if user and user.role.value == "GUEST" and not user.full_name:
+            user = None
 
-    # 3. If still no user, create a prospect user for this payment
-    if not user:
-        random_phone = f"+947{uuid.uuid4().hex[:8]}"
-        user = User(
-            phone_number=random_phone,
-            email=target_email,
-            full_name=target_name or "",
-            role=UserRole.GUEST if data.payment_type != PaymentType.MEMBERSHIP else UserRole.PROSPECT,
-            is_active=True
-        )
-        db.add(user)
-        await db.flush()
-
+    # 3. Do NOT create a user for non-members. recipient info goes on the payment.
     reason = data.reason or f"{data.payment_type.value.replace('_', ' ').capitalize()} Fee"
 
     # 4. Create pending Payment
     payment = Payment(
-        user_id=user.id,
+        user_id=user.id if user else None,
+        recipient_email=None if user else target_email,
+        recipient_name=None if user else (target_name or ""),
         amount=data.amount,
         currency="LKR",
         payment_type=data.payment_type,
@@ -1097,7 +1090,7 @@ async def generate_admin_payment_link(
     # 5. Create PaymentProof token
     proof = PaymentProof(
         payment_id=payment.id,
-        user_id=user.id,
+        user_id=user.id if user else None,
         upload_token=uuid.uuid4().hex,
         upload_token_expires_at=datetime.now(timezone.utc) + timedelta(days=14),
         status=PaymentProofStatus.PENDING_REVIEW
@@ -1115,7 +1108,9 @@ async def generate_admin_payment_link(
             "amount": float(payment.amount),
             "payment_type": payment.payment_type.value,
             "reason": payment.reason,
-            "user_id": str(user.id),
+            "user_id": str(user.id) if user else None,
+            "recipient_email": payment.recipient_email,
+            "recipient_name": payment.recipient_name,
             "upload_token": proof.upload_token
         },
     )
@@ -1154,14 +1149,14 @@ async def generate_admin_payment_link(
 
     return {
         "payment_id": str(payment.id),
-        "user_id": str(user.id),
+        "user_id": str(user.id) if user else None,
         "upload_token": proof.upload_token,
         "checkout_url": checkout_url,
         "amount": str(payment.amount),
         "payment_type": payment.payment_type.value,
         "reason": payment.reason,
-        "recipient_name": target_name or user.full_name,
-        "recipient_email": target_email or user.email,
+        "recipient_name": target_name or (user.full_name if user else ""),
+        "recipient_email": target_email or (user.email if user else ""),
         "email_sent": email_sent
     }
 
@@ -1171,11 +1166,12 @@ async def list_generated_links(db: AsyncSession) -> List[Dict[str, Any]]:
     from app.models.payments import PaymentStatus
     from app.core.config import get_settings
     from datetime import datetime, timezone
+    from sqlalchemy import outerjoin
 
     stmt = (
         select(PaymentProof, Payment, User)
         .join(Payment, Payment.id == PaymentProof.payment_id)
-        .join(User, User.id == PaymentProof.user_id)
+        .outerjoin(User, User.id == PaymentProof.user_id)
         .where(PaymentProof.upload_token.is_not(None))
         .order_by(desc(PaymentProof.created_at))
     )
@@ -1184,15 +1180,19 @@ async def list_generated_links(db: AsyncSession) -> List[Dict[str, Any]]:
     for proof, payment, user in res.all():
         is_expired = proof.upload_token_expires_at < datetime.now(timezone.utc)
         status_label = "completed" if payment.status == PaymentStatus.COMPLETED else ("expired" if is_expired else "pending")
-        
+
         checkout_url = f"{get_settings().PUBLIC_SITE_URL.rstrip('/')}/checkout?token={proof.upload_token}"
-        
+
+        # For non-member links user may be None; fall back to payment recipient fields
+        r_name = (user.full_name if user else None) or payment.recipient_name or ""
+        r_email = (user.email if user else None) or payment.recipient_email or ""
+
         results.append({
             "proof_id": str(proof.id),
             "payment_id": str(payment.id),
-            "user_id": str(user.id),
-            "recipient_name": user.full_name,
-            "recipient_email": user.email,
+            "user_id": str(user.id) if user else None,
+            "recipient_name": r_name,
+            "recipient_email": r_email,
             "payment_reason": payment.reason,
             "payment_amount": str(payment.amount),
             "payment_type": payment.payment_type.value,

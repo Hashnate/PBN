@@ -18,6 +18,7 @@ import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import PaymentCancelledPage from './pages/PaymentCancelledPage';
 import RewardsPage from './pages/RewardsPage';
 import SupportPage from './pages/SupportPage';
+import ExpertForumPage from './pages/ExpertForumPage';
 
 import MemberProfilePage from './pages/MemberProfilePage';
 import MyProfilePage from './pages/MyProfilePage';
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="/members/:id" element={<AppShell><MemberProfilePage /></AppShell>} />
             <Route path="/chapters" element={<AppShell><ChaptersPage /></AppShell>} />
             <Route path="/clubs" element={<AppShell><ClubsPage /></AppShell>} />
+            <Route path="/expert-forum" element={<AppShell><ExpertForumPage /></AppShell>} />
             <Route path="/community" element={<AppShell><CommunityPage /></AppShell>} />
             <Route path="/events" element={<AppShell><EventsPage /></AppShell>} />
             <Route path="/referrals" element={<AppShell><ReferralsPage /></AppShell>} />

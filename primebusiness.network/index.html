@@ -412,6 +412,8 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .nav-logo span {
@@ -420,7 +422,7 @@
 
     .nav-links {
       display: flex;
-      gap: 28px;
+      gap: 20px;
       list-style: none;
     }
 
@@ -430,6 +432,7 @@
       font-weight: 500;
       letter-spacing: 0.04em;
       transition: color 0.2s;
+      white-space: nowrap;
     }
 
     .nav-links a:hover {
@@ -448,6 +451,8 @@
       letter-spacing: 0.04em;
       transition: background 0.2s, transform 0.15s;
       display: inline-block;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .nav-cta:hover {
@@ -468,6 +473,8 @@
       letter-spacing: 0.04em;
       transition: background 0.2s, border-color 0.2s, transform 0.15s;
       display: inline-block;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .nav-portal:hover {
@@ -481,6 +488,8 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .hamburger {
@@ -2301,6 +2310,21 @@
       display: flex;
     }
 
+    #foundersModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px 20px;
+      overflow-y: auto;
+    }
+
+    #foundersModal.open {
+      display: flex;
+    }
+
     .modal-backdrop {
       position: absolute;
       inset: 0;
@@ -3271,8 +3295,8 @@
       <li><a href="#how">How It Works</a></li>
       <li><a href="#platform">Platform</a></li>
       <li><a href="#benefits">Benefits</a></li>
-      <li><a href="#clubs">Clubs</a></li>
       <li><a href="#chapters">Chapters</a></li>
+      <li><a href="expert-forum">Expert Forum</a></li>
       <li><a href="team">Operations</a></li>
       <li><a href="#pricing">Pricing</a></li>
     </ul>
@@ -3291,8 +3315,8 @@
     <a href="#how" onclick="closeMenu()">How It Works</a>
     <a href="#platform" onclick="closeMenu()">Platform</a>
     <a href="#benefits" onclick="closeMenu()">Benefits</a>
-    <a href="#clubs" onclick="closeMenu()">Clubs</a>
     <a href="#chapters" onclick="closeMenu()">Chapters</a>
+    <a href="expert-forum" onclick="closeMenu()">Expert Forum</a>
     <a href="team" onclick="closeMenu()">Operations</a>
     <a href="#pricing" onclick="closeMenu()">Pricing</a>
     <a href="https://portal.primebusiness.network" target="_blank" onclick="closeMenu()"
@@ -4086,7 +4110,7 @@
           <div class="pricing-feature yes"><span class="check">✓</span> Privilege Card</div>
           <div class="pricing-feature yes"><span class="check">✓</span> Priority directory visibility</div>
         </div>
-        <button class="btn-full outline" onclick="openModal()">Apply for Founders Club</button>
+        <button class="btn-full outline" onclick="openFoundersModal()">Apply for Founders Club</button>
       </div>
     </div>
 
@@ -4129,10 +4153,13 @@
           <div class="ecosystem-desc">An honorary forum for CEOs, Managing Directors, Founders, and equivalent senior
             business leaders within PBN. No fee for Forum participation — purely honorary. A space for senior leaders to
             connect, advise, and collaborate at the highest level.</div>
-          <div class="ecosystem-tags">
+          <div class="ecosystem-tags" style="margin-bottom: 16px;">
             <span class="ecosystem-tag">CEOs & MDs</span><span class="ecosystem-tag">Founders</span><span
               class="ecosystem-tag">Honorary</span><span class="ecosystem-tag">No Fee</span>
           </div>
+          <a href="expert-forum" style="display: inline-flex; align-items: center; gap: 6px; color: #c9a84c; font-weight: 700; font-size: 0.88rem; text-decoration: none;">
+            Explore Expert Forum &rarr;
+          </a>
         </div>
       </div>
       <div class="ecosystem-card reverse">
@@ -4406,6 +4433,7 @@
           <li><a href="#platform">Platform Features</a></li>
           <li><a href="#benefits">Member Benefits</a></li>
           <li><a href="#clubs">Horizontal Clubs</a></li>
+          <li><a href="expert-forum">Expert Forum</a></li>
         </ul>
       </div>
 
@@ -4694,6 +4722,138 @@
         <p>Thank you for applying. We will review your application and contact you within <strong>48 hours</strong> to
           confirm your industry fit and next steps.</p>
         <button class="success-close" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOUNDERS CLUB APPLICATION MODAL -->
+  <div id="foundersModal" role="dialog" aria-modal="true" aria-labelledby="foundersModalTitle">
+    <div class="modal-backdrop" onclick="closeFoundersModal()"></div>
+    <div class="modal-box" style="border: 1px solid rgba(212, 175, 55, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 30px rgba(212, 175, 55, 0.15);">
+      <div class="modal-header">
+        <div class="modal-badge" style="background: linear-gradient(135deg, #d4af37, #f3e5ab); color: #080d24; font-weight: 700;">Founders Club Application</div>
+        <h2 class="modal-title" id="foundersModalTitle">Company Membership<br /><em>Founders Club</em></h2>
+        <button class="modal-close" onclick="closeFoundersModal()" aria-label="Close">✕</button>
+      </div>
+
+      <div class="modal-body" id="fcModalFormWrap">
+        <form id="foundersForm" onsubmit="submitFoundersForm(event)" novalidate>
+
+          <div class="step-indicator" aria-label="Application steps">
+            <div class="step-pill active" data-fc-pill="1"><span class="step-num">1</span> Executive info</div>
+            <div class="step-connector"></div>
+            <div class="step-pill" data-fc-pill="2"><span class="step-num">2</span> Company profile</div>
+          </div>
+
+          <!-- STEP 1 -->
+          <div class="modal-step active" data-fc-step="1">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Full Name <span>*</span></label>
+                <input class="form-input" type="text" name="full_name" required placeholder="Representative Full Name" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Position / Designation <span>*</span></label>
+                <input class="form-input" type="text" name="designation" required placeholder="e.g. Founder, CEO, MD, Partner" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Contact Number <span>*</span></label>
+                <input class="form-input" type="tel" name="contact_number" required placeholder="e.g. 0771234567" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Work Email <span>*</span></label>
+                <input class="form-input" type="email" name="email" required placeholder="name@company.com" />
+              </div>
+            </div>
+            <div class="form-row" style="grid-template-columns: 1fr;">
+              <div class="form-group">
+                <label class="form-label">LinkedIn Profile URL <span>(Optional)</span></label>
+                <input class="form-input" type="url" name="linkedin_url" placeholder="https://linkedin.com/in/yourprofile" />
+              </div>
+            </div>
+            <div id="fcFormErrorStep1" style="display:none; background:#fff0f0; border:1px solid #f5c0c0; border-radius:6px; padding:12px 16px; font-size:0.82rem; color:#c0392b; margin-bottom:14px;"></div>
+            <div class="step-actions">
+              <button class="form-submit" type="button" onclick="goToFcStep(2)" style="background: linear-gradient(135deg, #d4af37, #b8860b); color: #080d24; font-weight: 700;">Continue to Company Profile &rarr;</button>
+            </div>
+            <div class="form-note">Step 1 of 2 — Executive Representative Details.</div>
+          </div>
+
+          <!-- STEP 2 -->
+          <div class="modal-step" data-fc-step="2">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Company / Business Name <span>*</span></label>
+                <input class="form-input" type="text" name="business_name" required placeholder="Trade / Registered Company Name" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Industry <span>*</span></label>
+                <input class="form-input" type="text" name="custom_industry" required placeholder="e.g. AI, Real Estate, FinTech..." />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Legal Form <span>(Optional)</span></label>
+                <select class="form-input" name="business_legal_type">
+                  <option value="">Select legal structure...</option>
+                  <option value="pvt_ltd">Private Limited (Pvt Ltd)</option>
+                  <option value="plc">Public Limited Company (PLC)</option>
+                  <option value="sole_proprietor">Sole Proprietorship</option>
+                  <option value="partnership">Partnership</option>
+                  <option value="other">Other / Holding</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Years in Operation <span>(Optional)</span></label>
+                <select class="form-input" name="years_in_operation">
+                  <option value="">Select years...</option>
+                  <option value="0-1">Less than 1 year</option>
+                  <option value="1-3">1 to 3 years</option>
+                  <option value="3-7">3 to 7 years</option>
+                  <option value="7+">7+ years</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Business Registration (BR) No. <span>(Optional)</span></label>
+                <input class="form-input" type="text" name="business_registration_number" placeholder="e.g. PV 123456" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Company Website <span>(Optional)</span></label>
+                <input class="form-input" type="url" name="website_url" placeholder="https://yourcompany.com" />
+              </div>
+            </div>
+            <div class="form-row" style="grid-template-columns: 1fr;">
+              <div class="form-group">
+                <label class="form-label">About your business &amp; networking goals <span>*</span></label>
+                <textarea class="form-input" name="what_you_offer" required rows="3" maxlength="500" placeholder="Briefly describe your company's core products/services and what you aim to leverage from Founders Club."></textarea>
+              </div>
+            </div>
+            <div class="modal-divider"></div>
+            <label class="privacy-consent" for="fcPrivacyCheck">
+              <input type="checkbox" id="fcPrivacyCheck" name="privacy_accepted" required />
+              <span class="privacy-consent-text">I have read and agree to the <a href="privacy-policy" target="_blank" onclick="event.stopPropagation()">PBN Privacy Policy</a>. I understand that company &amp; personal details will be processed for Founders Club operations.</span>
+            </label>
+            <div id="fcFormErrorStep2" style="display:none; background:#fff0f0; border:1px solid #f5c0c0; border-radius:6px; padding:12px 16px; font-size:0.82rem; color:#c0392b; margin-bottom:14px;"></div>
+            <div class="step-actions">
+              <button class="btn-secondary" type="button" onclick="goToFcStep(1)">&larr; Back</button>
+              <button class="form-submit" type="submit" id="fcFormSubmitBtn" style="background: linear-gradient(135deg, #d4af37, #b8860b); color: #080d24; font-weight: 700;">Submit Founders Application &rarr;</button>
+            </div>
+            <div class="form-note">Step 2 of 2 — Founders Club membership application.</div>
+          </div>
+
+        </form>
+      </div>
+
+      <div class="modal-success" id="fcModalSuccess">
+        <div class="success-icon" style="background: rgba(212, 175, 55, 0.15); color: #d4af37; border-color: #d4af37;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10" /></svg>
+        </div>
+        <h3 style="color: #d4af37;">Founders Club Application Received!</h3>
+        <p>Thank you for applying to the PBN Founders Club. Our executive team will review your company application and contact you within <strong>24 hours</strong> for next steps.</p>
+        <button class="success-close" onclick="closeFoundersModal()">Close</button>
       </div>
     </div>
   </div>
@@ -5153,6 +5313,120 @@
         errEl.textContent = 'Network error. Please check your connection and try again.';
         errEl.style.display = 'block';
         btn.disabled = false; btn.textContent = 'Submit Application →';
+      }
+    }
+
+    // ── FOUNDERS CLUB MODAL ────────────────────────────────────────────────
+    function openFoundersModal() {
+      document.getElementById('foundersModal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+      document.getElementById('fcFormErrorStep1').style.display = 'none';
+      document.getElementById('fcFormErrorStep2').style.display = 'none';
+      document.getElementById('fcPrivacyCheck').checked = false;
+      document.getElementById('fcModalFormWrap').style.display = '';
+      document.getElementById('fcModalSuccess').classList.remove('show');
+      try { goToFcStep(1); } catch (_) {}
+    }
+
+    function closeFoundersModal() {
+      document.getElementById('foundersModal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    const FC_STEP1_FIELDS = ['full_name', 'designation', 'contact_number', 'email'];
+
+    function validateFcStep1() {
+      const form = document.getElementById('foundersForm');
+      for (const name of FC_STEP1_FIELDS) {
+        const field = form.elements.namedItem(name);
+        if (!field || !(field.value || '').trim()) {
+          field?.focus?.();
+          const label = field?.closest('.form-group')?.querySelector('.form-label')?.textContent?.replace('*', '').trim() || name;
+          return 'Please fill in ' + label + '.';
+        }
+      }
+      const email = (form.elements.namedItem('email').value || '').trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        form.elements.namedItem('email').focus();
+        return 'Please enter a valid work email address.';
+      }
+      return null;
+    }
+
+    function goToFcStep(n) {
+      const form = document.getElementById('foundersForm');
+      if (n === 2) {
+        const err = validateFcStep1();
+        if (err) {
+          const errEl = document.getElementById('fcFormErrorStep1');
+          errEl.textContent = err; errEl.style.display = 'block';
+          return;
+        }
+        document.getElementById('fcFormErrorStep1').style.display = 'none';
+      }
+      form.querySelectorAll('.modal-step').forEach(function(el) { el.classList.remove('active'); });
+      var step = form.querySelector('.modal-step[data-fc-step="' + n + '"]');
+      if (step) step.classList.add('active');
+      form.querySelectorAll('[data-fc-pill]').forEach(function(el) {
+        var s = parseInt(el.dataset.fcPill, 10);
+        el.classList.toggle('active', s === n);
+        el.classList.toggle('done', s < n);
+      });
+      var wrap = document.getElementById('fcModalFormWrap');
+      if (wrap) wrap.scrollTop = 0;
+    }
+
+    async function submitFoundersForm(e) {
+      e.preventDefault();
+      var privacyCheck = document.getElementById('fcPrivacyCheck');
+      var errEl = document.getElementById('fcFormErrorStep2');
+
+      var step1Err = validateFcStep1();
+      if (step1Err) {
+        var errEl1 = document.getElementById('fcFormErrorStep1');
+        errEl1.textContent = step1Err; errEl1.style.display = 'block';
+        goToFcStep(1);
+        return;
+      }
+      if (!privacyCheck.checked) {
+        errEl.textContent = 'You must agree to the Privacy Policy before submitting.';
+        errEl.style.display = 'block';
+        return;
+      }
+      var form = document.getElementById('foundersForm');
+      var btn = document.getElementById('fcFormSubmitBtn');
+      btn.disabled = true; btn.textContent = 'Submitting...';
+      errEl.style.display = 'none';
+
+      var data = Object.fromEntries(new FormData(form).entries());
+      data.application_type = 'founders_club';
+      data.privacy_accepted = true;
+      ['website_url', 'linkedin_url'].forEach(function(k) {
+        if (data[k] && !/^https?:\/\//i.test(data[k])) data[k] = 'https://' + data[k];
+      });
+      Object.keys(data).forEach(function(k) {
+        if (typeof data[k] === 'string' && data[k].trim() === '') delete data[k];
+      });
+
+      try {
+        var res = await fetch(GATEWAY_URL + '?path=applications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        var json = await res.json();
+        if (res.ok && json.status === 'success') {
+          document.getElementById('fcModalFormWrap').style.display = 'none';
+          document.getElementById('fcModalSuccess').classList.add('show');
+        } else {
+          var errorMsg = json.message || json.error || 'Submission failed. Please try again.';
+          errEl.textContent = errorMsg; errEl.style.display = 'block';
+          btn.disabled = false; btn.textContent = 'Submit Founders Application \u2192';
+        }
+      } catch (err) {
+        errEl.textContent = 'Network error. Please check your connection and try again.';
+        errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Submit Founders Application \u2192';
       }
     }
   </script>

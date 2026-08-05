@@ -83,19 +83,35 @@ async def create_application(
 ) -> Application:
     # Normalize email (lowercased, trimmed) for consistent uniqueness checks
     normalized_email = (data.email or "").strip().lower() or None
+    app_type = data.application_type or "standard"
 
-    # Validate industry active
-    stmt = select(IndustryCategory).where(
-        IndustryCategory.id == data.industry_category_id,
-        IndustryCategory.is_active.is_(True),
-    )
-    result = await db.execute(stmt)
-    if result.scalar_one_or_none() is None:
-        raise BadRequestException("Invalid or inactive industry category.", code="INVALID_INDUSTRY")
+    if app_type != "founders_club":
+        if not data.industry_category_id:
+            raise BadRequestException("Industry category is required for standard applications.", code="INVALID_INDUSTRY")
+        if not data.chapter_id:
+            raise BadRequestException("Target chapter is required for standard applications.", code="INVALID_CHAPTER")
+
+        # Validate industry active
+        stmt = select(IndustryCategory).where(
+            IndustryCategory.id == data.industry_category_id,
+            IndustryCategory.is_active.is_(True),
+        )
+        result = await db.execute(stmt)
+        if result.scalar_one_or_none() is None:
+            raise BadRequestException("Invalid or inactive industry category.", code="INVALID_INDUSTRY")
+    else:
+        if data.industry_category_id:
+            stmt = select(IndustryCategory).where(
+                IndustryCategory.id == data.industry_category_id,
+                IndustryCategory.is_active.is_(True),
+            )
+            if (await db.execute(stmt)).scalar_one_or_none() is None:
+                raise BadRequestException("Invalid or inactive industry category.", code="INVALID_INDUSTRY")
 
     # ── Email uniqueness ─────────────────────────────────────────────────
-    # Reject if the email is already linked to a registered user/member.
-    if normalized_email:
+    # For Founders Club, the applicant represents a company — they may already
+    # be a PBN member personally, so we skip the member email check.
+    if normalized_email and app_type != "founders_club":
         existing_user_stmt = select(User.id).where(func.lower(User.email) == normalized_email).limit(1)
         if (await db.execute(existing_user_stmt)).first() is not None:
             raise BadRequestException(
@@ -103,10 +119,12 @@ async def create_application(
                 code="EMAIL_REGISTERED",
             )
 
-        # Reject if an active (non-rejected) application already uses this email.
+    if normalized_email:
+        # Reject if an active (non-rejected) application of the SAME TYPE already uses this email.
         existing_app_email_stmt = select(Application.id).where(
             func.lower(Application.email) == normalized_email,
             Application.status.notin_([ApplicationStatus.REJECTED]),
+            Application.application_type == app_type,
         ).limit(1)
         if (await db.execute(existing_app_email_stmt)).first() is not None:
             raise BadRequestException(
@@ -115,18 +133,20 @@ async def create_application(
             )
 
     # ── Phone uniqueness ─────────────────────────────────────────────────
-    # Reject if the phone number is already linked to a registered user/member.
-    existing_phone_stmt = select(User.id).where(User.phone_number == data.contact_number).limit(1)
-    if (await db.execute(existing_phone_stmt)).first() is not None:
-        raise BadRequestException(
-            "This contact number is already registered to an existing member. Please login or use a different number.",
-            code="PHONE_REGISTERED",
-        )
+    # Also skip member phone check for Founders Club for the same reason.
+    if app_type != "founders_club":
+        existing_phone_stmt = select(User.id).where(User.phone_number == data.contact_number).limit(1)
+        if (await db.execute(existing_phone_stmt)).first() is not None:
+            raise BadRequestException(
+                "This contact number is already registered to an existing member. Please login or use a different number.",
+                code="PHONE_REGISTERED",
+            )
 
-    # Reject if an active (non-rejected) application already uses this phone.
+    # Reject if an active (non-rejected) application of the SAME TYPE already uses this phone.
     existing_app_phone_stmt = select(Application.id).where(
         Application.contact_number == data.contact_number,
         Application.status.notin_([ApplicationStatus.REJECTED]),
+        Application.application_type == app_type,
     ).limit(1)
     if (await db.execute(existing_app_phone_stmt)).first() is not None:
         raise BadRequestException(
@@ -134,22 +154,25 @@ async def create_application(
             code="PHONE_APPLICATION_EXISTS",
         )
 
-    # Check if industry is already occupied by a member in this chapter
-    occ_stmt = select(ChapterMembership).where(
-        ChapterMembership.chapter_id == data.chapter_id,
-        ChapterMembership.industry_category_id == data.industry_category_id,
-        ChapterMembership.is_active.is_(True)
-    )
-    if (await db.execute(occ_stmt)).scalar_one_or_none() is not None:
-        raise BadRequestException("This industry is already occupied in the selected chapter.", code="INDUSTRY_OCCUPIED")
+    # Check if industry is already occupied by a member in this chapter (only for standard applications)
+    if app_type != "founders_club" and data.chapter_id and data.industry_category_id:
+        occ_stmt = select(ChapterMembership).where(
+            ChapterMembership.chapter_id == data.chapter_id,
+            ChapterMembership.industry_category_id == data.industry_category_id,
+            ChapterMembership.is_active.is_(True)
+        )
+        if (await db.execute(occ_stmt)).scalar_one_or_none() is not None:
+            raise BadRequestException("This industry is already occupied in the selected chapter.", code="INDUSTRY_OCCUPIED")
 
     app = Application(
+        application_type=app_type,
         full_name=data.full_name,
         business_name=data.business_name,
         contact_number=data.contact_number,
         email=normalized_email,
         district=data.district,
         industry_category_id=data.industry_category_id,
+        custom_industry=data.custom_industry,
         chapter_id=data.chapter_id,
         status=ApplicationStatus.PENDING,
         designation=data.designation,
@@ -235,6 +258,7 @@ async def list_applications(
     page: int,
     limit: int,
     db: AsyncSession,
+    application_type: str | None = None,
 ) -> Tuple[List[dict], int]:
     stmt = select(
         Application,
@@ -245,6 +269,8 @@ async def list_applications(
         stmt = stmt.where(Application.status == status)
     if industry_category_id:
         stmt = stmt.where(Application.industry_category_id == industry_category_id)
+    if application_type:
+        stmt = stmt.where(Application.application_type == application_type)
         
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total = (await db.execute(count_stmt)).scalar() or 0
@@ -258,14 +284,17 @@ async def list_applications(
         chapter_name = row[1]
         app_dict = {
             "id": app.id,
+            "application_type": app.application_type,
             "full_name": app.full_name,
             "business_name": app.business_name,
             "contact_number": app.contact_number,
             "email": app.email,
             "district": app.district,
             "industry_category_id": app.industry_category_id,
+            "custom_industry": app.custom_industry,
             "chapter_id": app.chapter_id,
             "chapter_name": chapter_name,
+            "designation": app.designation,
             "status": app.status,
             "fit_call_date": app.fit_call_date,
             "notes": app.notes,
@@ -420,8 +449,12 @@ async def update_application_status(
         except Exception as e:
             logger.error(f"Failed to send approval email to {app.email}: {e}")
         
+        is_founders = (app.application_type == "founders_club")
+        m_type = MembershipType.FOUNDERS_CLUB if is_founders else MembershipType.STANDARD
+        fee_amount = Decimal("50000.00") if is_founders else Decimal("15000.00")
+
         # Determine chapter: use the admin's chapter, or fallback to any chapter if super admin, or data.chapter_id
-        chapter_id = data.chapter_id
+        chapter_id = data.chapter_id or app.chapter_id
         if not chapter_id:
             # Let's see if admin is part of a chapter
             adm_chap_stmt = select(ChapterMembership.chapter_id).where(ChapterMembership.user_id == actor.id)
@@ -437,31 +470,32 @@ async def update_application_status(
                 else:
                     raise BadRequestException("No chapter available to assign", code="NO_CHAPTER")
 
-        # Check if the slot is taken
-        ind_stmt = select(ChapterMembership).where(
-            ChapterMembership.chapter_id == chapter_id,
-            ChapterMembership.industry_category_id == app.industry_category_id,
-        )
-        taken = (await db.execute(ind_stmt)).scalar_one_or_none()
+        # Check if the slot is taken (only for standard applications with an industry category)
+        taken = None
+        if not is_founders and app.industry_category_id:
+            ind_stmt = select(ChapterMembership).where(
+                ChapterMembership.chapter_id == chapter_id,
+                ChapterMembership.industry_category_id == app.industry_category_id,
+                ChapterMembership.is_active.is_(True)
+            )
+            taken = (await db.execute(ind_stmt)).scalar_one_or_none()
         
-        if taken:
-            if taken.user_id != user.id:
-                # Get names for better error message
-                ic_stmt = select(IndustryCategory.name).where(IndustryCategory.id == app.industry_category_id)
-                ch_stmt = select(Chapter.name).where(Chapter.id == chapter_id)
-                ic_name = (await db.execute(ic_stmt)).scalar() or "Unknown"
-                ch_name = (await db.execute(ch_stmt)).scalar() or "This Chapter"
-                
-                raise BadRequestException(
-                    f'The "{ic_name}" slot is already occupied by another member in "{ch_name}".',
-                    code="INDUSTRY_TAKEN"
-                )
+        if taken and taken.user_id != user.id:
+            ic_stmt = select(IndustryCategory.name).where(IndustryCategory.id == app.industry_category_id)
+            ch_stmt = select(Chapter.name).where(Chapter.id == chapter_id)
+            ic_name = (await db.execute(ic_stmt)).scalar() or "Unknown"
+            ch_name = (await db.execute(ch_stmt)).scalar() or "This Chapter"
+            
+            raise BadRequestException(
+                f'The "{ic_name}" slot is already occupied by another member in "{ch_name}".',
+                code="INDUSTRY_TAKEN"
+            )
         else:
             new_mem = ChapterMembership(
                 user_id=user.id,
                 chapter_id=chapter_id,
                 industry_category_id=app.industry_category_id,
-                membership_type=MembershipType.STANDARD,
+                membership_type=m_type,
                 start_date=date.today(),
                 end_date=date.today() + timedelta(days=365),
                 is_active=(data.payment_status == "completed") # Active if paid
@@ -476,10 +510,10 @@ async def update_application_status(
 
             membership_payment = Payment(
                 user_id=user.id,
-                amount=Decimal("15000.00"),
+                amount=fee_amount,
                 currency="LKR",
                 payment_type=PaymentType.MEMBERSHIP,
-                reason=f"Membership fee for {app.business_name}",
+                reason=f"{'Founders Club ' if is_founders else ''}Membership fee for {app.business_name}",
                 status=p_status,
                 recorded_by_id=actor.id,
             )
@@ -597,6 +631,11 @@ async def update_application_status(
 async def delete_application(app_id: UUID, db: AsyncSession) -> None:
     """Permanently delete an application and its history (via CASCADE)."""
     app = await get_application_by_id(app_id, db)
+    if app.status != ApplicationStatus.PENDING:
+        raise BadRequestException(
+            "Only pending applications can be deleted. This application has progressed past the pending state.",
+            code="CANNOT_DELETE_NON_PENDING_APPLICATION"
+        )
     await db.delete(app)
     await db.commit()
 
