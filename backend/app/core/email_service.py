@@ -2,6 +2,8 @@ import smtplib
 import ssl
 import logging
 import asyncio
+import re
+import html
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
@@ -44,24 +46,21 @@ def _send_smtp(to_email: str, subject: str, html_content: str, attachments: typi
     from_email = custom_smtp.get('from_email') if custom_smtp else settings.SMTP_FROM_EMAIL
     from_name = custom_smtp.get('from_name') if custom_smtp else settings.SMTP_FROM_NAME
 
-    msg = MIMEMultipart("mixed")
-    msg["Subject"] = subject
-    msg["From"] = f"{from_name} <{from_email}>"
-    msg["To"] = to_email
-    msg["Date"] = formatdate(localtime=True)
-    msg["Message-ID"] = make_msgid(domain="primebusiness.network")
+    # Clean HTML to produce plain text alternative
+    text_content = re.sub(r'<style[^>]*>.*?</style>', '', html_content, flags=re.DOTALL)
+    text_content = re.sub(r'<script[^>]*>.*?</script>', '', text_content, flags=re.DOTALL)
+    text_content = re.sub(r'<br\s*/?>', '\n', text_content)
+    text_content = re.sub(r'</p>', '\n\n', text_content)
+    text_content = re.sub(r'<[^>]+>', '', text_content)
+    text_content = html.unescape(text_content)
+    text_content = '\n'.join([line.strip() for line in text_content.splitlines() if line.strip()])
 
-    # Add plain text fallback to prevent "MIME HTML Only" spam penalty
-    plain_text = "To view this message, please use an HTML compatible email client."
-    part1 = MIMEText(plain_text, "plain")
-    part2 = MIMEText(html_content, "html")
-    
-    alt_part = MIMEMultipart("alternative")
-    alt_part.attach(part1)
-    alt_part.attach(part2)
-    msg.attach(alt_part)
-    
     if attachments:
+        msg = MIMEMultipart("mixed")
+        alt_part = MIMEMultipart("alternative")
+        alt_part.attach(MIMEText(text_content, "plain", "utf-8"))
+        alt_part.attach(MIMEText(html_content, "html", "utf-8"))
+        msg.attach(alt_part)
         for att in attachments:
             ctype = att.get('content_type', 'application/octet-stream')
             maintype, _, subtype = ctype.partition('/')
@@ -70,6 +69,52 @@ def _send_smtp(to_email: str, subject: str, html_content: str, attachments: typi
             encoders.encode_base64(part)
             part.add_header("Content-Disposition", f"attachment; filename=\"{att['filename']}\"")
             msg.attach(part)
+    else:
+        msg = MIMEMultipart("alternative")
+        msg.attach(MIMEText(text_content, "plain", "utf-8"))
+        msg.attach(MIMEText(html_content, "html", "utf-8"))
+
+    msg["Subject"] = subject
+    msg["From"] = f"{from_name} <{from_email}>"
+    msg["To"] = to_email
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid(domain="primebusiness.network")
+
+    if smtp_password and smtp_password.startswith("xkeysib-"):
+        import json
+        import urllib.request
+        
+        url = "https://api.brevo.com/v3/smtp/email"
+        headers = {
+            "accept": "application/json",
+            "api-key": smtp_password,
+            "content-type": "application/json"
+        }
+        payload = {
+            "sender": {"name": from_name, "email": from_email},
+            "to": [{"email": to_email}],
+            "subject": subject,
+            "htmlContent": html_content,
+            "textContent": text_content,
+        }
+        if attachments:
+            payload["attachment"] = [
+                {
+                    "name": att.get("filename", "attachment"),
+                    "content": att.get("content").decode("utf-8") if isinstance(att.get("content"), bytes) else att.get("content")
+                }
+                for att in attachments
+            ]
+        
+        try:
+            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+            with urllib.request.urlopen(req) as resp:
+                res_data = json.loads(resp.read().decode("utf-8"))
+                logger.info(f"Successfully sent email to {to_email} via Brevo API: {res_data}")
+                return
+        except Exception as e:
+            logger.error(f"Failed to send email to {to_email} via Brevo API: {str(e)}")
+            raise
 
     try:
         context = ssl.create_default_context()
