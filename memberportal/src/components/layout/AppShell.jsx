@@ -8,6 +8,8 @@ export function AppShell({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  const isForced = user?.must_change_password;
+
   return (
     <div className="ds-shell">
       <Sidebar user={user} onLogout={logout} />
@@ -16,8 +18,9 @@ export function AppShell({ children }) {
           adminUser={user}
           notifications={[]} // Add notifications logic later if needed
           unreadCount={0}
-          onOpenSettings={() => navigate('/settings')}
-          onOpenProfile={() => navigate('/profile')}
+          onOpenSettings={() => !isForced && navigate('/settings')}
+          onOpenProfile={() => !isForced && navigate('/profile')}
+          onChangePassword={() => navigate('/change-password')}
           onLogout={logout}
         />
         <main className="ds-shell__content">

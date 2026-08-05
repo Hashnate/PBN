@@ -9,6 +9,22 @@ export function Sidebar({ user, onLogout }) {
   const renderLink = (link) => {
     const Icon = link.icon;
     const active = location.pathname.startsWith(link.path);
+    const isForced = user?.must_change_password;
+
+    if (isForced) {
+      return (
+        <li key={link.path} style={{ listStyle: 'none' }}>
+          <div
+            className="ds-sidebar__item"
+            style={{ textDecoration: 'none', opacity: 0.4, cursor: 'not-allowed' }}
+          >
+            <Icon className="ds-sidebar__item-icon" size={20} />
+            <span className="ds-sidebar__item-label">{link.title}</span>
+          </div>
+        </li>
+      );
+    }
+
     return (
       <li key={link.path} style={{ listStyle: 'none' }}>
         <Link

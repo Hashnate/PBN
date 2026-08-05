@@ -2949,7 +2949,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            'Upcoming Meetings',
+                            'Upcoming Meetings & Events',
                             style: GoogleFonts.dmSans(
                               fontWeight: FontWeight.w800,
                               fontSize: 16,
